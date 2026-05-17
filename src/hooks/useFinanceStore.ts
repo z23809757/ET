@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useEffect, useMemo } from 'react';
+import { useReducer, useCallback, useEffect, useMemo, useRef } from 'react';
 import { financeService } from '../services/financeService';
 import { FE } from '../lib/financeEngine';
 import { Tab, Row, OverallRow, UserSettings } from '../types/finance';
@@ -164,6 +164,7 @@ function reducer(state: State, action: Action): State {
 
 export function useFinanceStore() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  //const lastFetchRef = useRef<number>(0);
 
   const loadData = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', loading: true });
@@ -173,20 +174,32 @@ export function useFinanceStore() {
         financeService.fetchSettings(),
       ]);
 
+      // Fetch all tabs in parallel
+      const tabsPromises = years.map(year => financeService.fetchFullYearData(year.id));
+      const tabsResults = await Promise.all(tabsPromises);
+      
       const tabsByYear: Record<string, Tab[]> = {};
-      const rowsByTable: Record<string, Row[]> = {};
-
-      for (const year of years) {
-        const tabs = await financeService.fetchFullYearData(year.id);
+      const allTableIds: string[] = [];
+      
+      years.forEach((year, index) => {
+        const tabs = tabsResults[index];
         tabsByYear[year.id] = tabs;
         
-        for (const tab of tabs) {
-          for (const table of tab.tables) {
-            const rows = await financeService.fetchRows(table.id);
-            rowsByTable[table.id] = rows;
-          }
-        }
-      }
+        tabs.forEach(tab => {
+          tab.tables.forEach(table => {
+            allTableIds.push(table.id);
+          });
+        });
+      });
+      
+      // Fetch all rows in ONE parallel batch
+      const rowsPromises = allTableIds.map(id => financeService.fetchRows(id));
+      const allRowsResults = await Promise.all(rowsPromises);
+      
+      const rowsByTable: Record<string, Row[]> = {};
+      allTableIds.forEach((tableId, index) => {
+        rowsByTable[tableId] = allRowsResults[index];
+      });
 
       const activeYear = years[0] || null;
       const settingsData = settings || { exchangeRate: 85.40, displayCurrency: 'USD' };
@@ -214,25 +227,37 @@ export function useFinanceStore() {
     loadData();
   }, [loadData]);
 
-  // Simple refetch on window focus (instead of broken realtime)
-  useEffect(() => {
-    const handleFocus = () => {
-      loadData();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [loadData]);
+  // // Throttled window focus refetch
+  // useEffect(() => {
+  //   const handleFocus = () => {
+  //     const now = Date.now();
+  //     if (now - lastFetchRef.current > 30000) {
+  //       lastFetchRef.current = now;
+  //       loadData();
+  //     }
+  //   };
+  //   window.addEventListener('focus', handleFocus);
+  //   return () => window.removeEventListener('focus', handleFocus);
+  // }, [loadData]);
 
   const updateRate = useCallback(async (rate: number) => {
     dispatch({ type: 'SET_RATE', rate });
-    await financeService.saveSettings({ ...state.settings, exchangeRate: rate });
+    const { settings: currentSettings } = state;
+    await financeService.saveSettings({ 
+      exchangeRate: rate, 
+      displayCurrency: currentSettings.displayCurrency 
+    });
     toast.success('Exchange rate updated');
-  }, [state.settings]);
+  }, [state.settings.displayCurrency]);
 
   const updateDisplayCurrency = useCallback(async (cur: 'USD' | 'INR') => {
     dispatch({ type: 'SET_DISPLAY_CURRENCY', cur });
-    await financeService.saveSettings({ ...state.settings, displayCurrency: cur });
-  }, [state.settings]);
+    const { settings: currentSettings } = state;
+    await financeService.saveSettings({ 
+      exchangeRate: currentSettings.exchangeRate, 
+      displayCurrency: cur 
+    });
+  }, [state.settings.exchangeRate]);
 
   const createYear = useCallback(async (year: number, copyFromYearId?: string) => {
     const newYear = await financeService.createYear(year);
@@ -254,16 +279,45 @@ export function useFinanceStore() {
   }, [state.years]);
 
   const createTab = useCallback(async (yearId: string, name: string, icon: string) => {
-    const newTab = await financeService.createTab(yearId, name, icon);
-    const currentTabs = state.tabsByYear[yearId] || [];
-    dispatch({ type: 'SET_TABS', yearId, tabs: [...currentTabs, { ...newTab, tables: [] }] });
-    toast.success(`Tab "${name}" created`);
-    return newTab;
+    try {
+      const newTab = await financeService.createTab(yearId, name, icon);
+      const currentTabs = state.tabsByYear[yearId] || [];
+      dispatch({ type: 'SET_TABS', yearId, tabs: [...currentTabs, { ...newTab, tables: [] }] });
+      toast.success(`Tab "${name}" created`);
+      return newTab;
+    } catch (error) {
+      console.error('Failed to create tab:', error);
+      toast.error('Failed to create tab');
+      throw error;
+    }
   }, [state.tabsByYear]);
 
   const createTable = useCallback(async (tabId: string, name: string, type: string, fields: any[]) => {
-    const newTable = await financeService.createTable(tabId, name, type);
-    await financeService.saveFields(newTable.id, fields);
+    try {
+      const newTable = await financeService.createTable(tabId, name, type);
+      await financeService.saveFields(newTable.id, fields);
+      
+      const yearId = state.years.find(y => 
+        state.tabsByYear[y.id]?.some(t => t.id === tabId)
+      )?.id;
+      
+      if (yearId) {
+        const tabs = await financeService.fetchFullYearData(yearId);
+        dispatch({ type: 'SET_TABS', yearId, tabs });
+      }
+      
+      toast.success(`Table "${name}" created`);
+      return newTable;
+    } catch (error) {
+      console.error('Failed to create table:', error);
+      toast.error('Failed to create table');
+      throw error;
+    }
+  }, [state.years, state.tabsByYear]);
+
+  const updateTable = useCallback(async (tabId: string, tableId: string, name: string, type: string, fields: any[]) => {
+    await financeService.updateTable(tableId, { name, type });
+    await financeService.saveFields(tableId, fields);
     
     const yearId = state.years.find(y => 
       state.tabsByYear[y.id]?.some(t => t.id === tabId)
@@ -274,26 +328,8 @@ export function useFinanceStore() {
       dispatch({ type: 'SET_TABS', yearId, tabs });
     }
     
-    toast.success(`Table "${name}" created`);
-    return newTable;
+    toast.success(`Table "${name}" updated`);
   }, [state.years, state.tabsByYear]);
-
-  const updateTable = useCallback(async (tabId: string, tableId: string, name: string, type: string, fields: any[]) => {
-  await financeService.updateTable(tableId, { name, type });
-  await financeService.saveFields(tableId, fields);
-  
-  const yearId = state.years.find(y => 
-    state.tabsByYear[y.id]?.some(t => t.id === tabId)
-  )?.id;
-  
-  if (yearId) {
-    // Refresh the entire year data to update the overall calculation
-    const tabs = await financeService.fetchFullYearData(yearId);
-    dispatch({ type: 'SET_TABS', yearId, tabs });
-  }
-  
-  toast.success(`Table "${name}" updated`);
-}, [state.years, state.tabsByYear]);
 
   const addRow = useCallback(async (tableId: string, rowData: any) => {
     const newRow = await financeService.addRow(tableId, rowData);

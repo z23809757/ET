@@ -70,7 +70,7 @@ const fmtCell = (row: Row, f: any) => {
     return formatField(parseFloat(v) || 0, f.currency, settings.displayCurrency, settings.exchangeRate);
   }
   // Return 6 dashes for empty values
-  return v ? String(v) : "-- ----";
+  return v ? String(v) : "null";
 };
 
   const total = rows.length;

@@ -3,8 +3,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { Icon } from '../shared/Icon';
 import { Button } from '../shared/Button';
+import { supabase } from '../../lib/supabase';
 
 export const SignupPage: React.FC = () => {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -13,6 +15,11 @@ export const SignupPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!name.trim()) {
+      error('Please enter your name');
+      return;
+    }
     if (password !== confirmPassword) {
       error('Passwords do not match');
       return;
@@ -21,8 +28,21 @@ export const SignupPage: React.FC = () => {
       error('Password must be at least 6 characters');
       return;
     }
+    
     try {
-      await signUp(email, password);
+      // Sign up with user metadata including name
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: name.trim(),
+          }
+        }
+      });
+      
+      if (signUpError) throw signUpError;
+      
       success('Account created! Please check your email to confirm.');
     } catch (err) {
       error('Failed to create account');
@@ -41,6 +61,17 @@ export const SignupPage: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4, display: 'block' }}>Full Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="John Doe"
+              required
+              style={{ width: '100%', padding: '8px 12px', fontSize: 13, border: '0.5px solid var(--color-border-secondary)', borderRadius: 8, background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', outline: 'none' }}
+            />
+          </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4, display: 'block' }}>Email</label>
             <input

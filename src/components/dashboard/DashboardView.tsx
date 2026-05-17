@@ -29,10 +29,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [showAllYears, setShowAllYears] = useState(false);
 
-  // Get data based on toggle
   const displayRows = useMemo(() => {
     if (showAllYears && allYearsRows) {
-      // Combine all years
       const combined: OverallRow[] = [];
       for (const year in allYearsRows) {
         combined.push(...allYearsRows[year]);
@@ -42,7 +40,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return overallRows;
   }, [showAllYears, overallRows, allYearsRows]);
 
-  // Get year count for display
   const yearCount = useMemo(() => {
     if (allYearsRows) {
       return Object.keys(allYearsRows).length;
@@ -50,7 +47,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return 1;
   }, [allYearsRows]);
 
-  // Apply date filter
   const filtered = useMemo(() => {
     if (!dashFilter.from && !dashFilter.to) return displayRows;
     return FE.filterByDate(displayRows, dashFilter.from, dashFilter.to);
@@ -166,7 +162,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ))}
         </div>
 
-        {/* Year Toggle - Below metric cards */}
+        {/* Year Toggle */}
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
           <div style={{ 
             display: "flex", 
@@ -247,7 +243,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)" }}>{r.subcategory}</div>
                     <div style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
-                      {r.category} · {r.month || "-- ----"}
+                      {r.category} · {r.month || ""}
                       {showAllYears && <span style={{ marginLeft: 6, color: "#1D9E75" }}>({r.year})</span>}
                     </div>
                   </div>

@@ -27,7 +27,7 @@ export const LoginPage: React.FC = () => {
           <div style={{ width: 48, height: 48, borderRadius: 12, background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
             <Icon n="ti-chart-pie-2" size={24} color="#185FA5" />
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 6 }}>Pavan's Finance Tracker</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 6 }}>Expenses Tracker</h1>
           <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>Sign in to track your finances</p>
         </div>
 
