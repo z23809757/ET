@@ -256,17 +256,23 @@ export const AppShell: React.FC = () => {
         />
       )}
       {modal?.kind === 'addTab' && (
-        <AddTabModal
-          onSave={(name, icon) => createTab(modal.yearId, name, icon)}
-          onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
-        />
-      )}
+  <AddTabModal
+    onSave={async (name, icon) => {
+      await createTab(modal.yearId, name, icon);
+      dispatch({ type: 'SET_MODAL', modal: null });
+    }}
+    onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
+  />
+)}
       {modal?.kind === 'addTable' && currentTab && (
-        <TableModal
-          onSave={(data) => createTable(modal.tabId, data.name, data.type, data.fields)}
-          onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
-        />
-      )}
+  <TableModal
+    onSave={async (data) => {
+      await createTable(modal.tabId, data.name, data.type, data.fields);
+      dispatch({ type: 'SET_MODAL', modal: null });  // MAKE SURE THIS LINE EXISTS
+    }}
+    onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
+  />
+)}
       {modal?.kind === 'editTable' && (
         <TableModal
           initial={modal.table}
