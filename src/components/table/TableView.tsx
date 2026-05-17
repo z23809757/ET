@@ -4,7 +4,6 @@ import { Icon } from '../shared/Icon';
 import { Button } from '../shared/Button';
 import { Table, Row, UserSettings } from '../../types/finance';
 import { formatField } from '../../lib/formatters';
-import { RowHistoryModal } from './RowHistoryModal';
 
 interface TableViewProps {
   table: Table;

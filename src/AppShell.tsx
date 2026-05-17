@@ -281,23 +281,30 @@ export const AppShell: React.FC = () => {
 
       {/* Delete confirms */}
       {deleteTarget?.type === 'table' && (
-        <DeleteConfirmModal
-          name={deleteTarget.name}
-          rowCount={deleteTarget.count}
-          entityType="table"
-          onConfirm={() => deleteTable(deleteTarget.tabId, deleteTarget.tableId)}
-          onClose={() => dispatch({ type: 'SET_DELETE_TARGET', target: null })}
-        />
-      )}
-      {deleteTarget?.type === 'tab' && (
-        <DeleteConfirmModal
-          name={deleteTarget.name}
-          rowCount={deleteTarget.count}
-          entityType="tab"
-          onConfirm={() => deleteTab(deleteTarget.tabId)}
-          onClose={() => dispatch({ type: 'SET_DELETE_TARGET', target: null })}
-        />
-      )}
+  <DeleteConfirmModal
+    name={deleteTarget.name}
+    rowCount={deleteTarget.count}
+    entityType="table"
+    onConfirm={() => {
+      deleteTable(deleteTarget.tabId, deleteTarget.tableId);
+      dispatch({ type: 'SET_DELETE_TARGET', target: null });  // ADD THIS LINE
+    }}
+    onClose={() => dispatch({ type: 'SET_DELETE_TARGET', target: null })}
+  />
+)}
+
+{deleteTarget?.type === 'tab' && (
+  <DeleteConfirmModal
+    name={deleteTarget.name}
+    rowCount={deleteTarget.count}
+    entityType="tab"
+    onConfirm={() => {
+      deleteTab(deleteTarget.tabId);
+      dispatch({ type: 'SET_DELETE_TARGET', target: null });  // ADD THIS LINE
+    }}
+    onClose={() => dispatch({ type: 'SET_DELETE_TARGET', target: null })}
+  />
+)}
     </div>
   );
 };
