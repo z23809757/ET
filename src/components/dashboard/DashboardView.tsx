@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { S } from '../../lib/constants';
 import { FE } from '../../lib/financeEngine';
 import { Icon } from '../shared/Icon';
@@ -10,24 +10,51 @@ import { formatUSD, formatINR } from '../../lib/formatters';
 
 interface DashboardViewProps {
   overallRows: OverallRow[];
+  allYearsRows?: Record<string, OverallRow[]>;
   settings: UserSettings;
   dashFilter: { from: string; to: string; quick: string };
   onFilterChange: (patch: any) => void;
   onCurrencyChange: (cur: 'USD' | 'INR') => void;
+  activeYear?: number | null;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   overallRows,
+  allYearsRows,
   settings,
   dashFilter,
   onFilterChange,
   onCurrencyChange,
+  activeYear,
 }) => {
+  const [showAllYears, setShowAllYears] = useState(false);
+
+  // Get data based on toggle
+  const displayRows = useMemo(() => {
+    if (showAllYears && allYearsRows) {
+      // Combine all years
+      const combined: OverallRow[] = [];
+      for (const year in allYearsRows) {
+        combined.push(...allYearsRows[year]);
+      }
+      return combined;
+    }
+    return overallRows;
+  }, [showAllYears, overallRows, allYearsRows]);
+
+  // Get year count for display
+  const yearCount = useMemo(() => {
+    if (allYearsRows) {
+      return Object.keys(allYearsRows).length;
+    }
+    return 1;
+  }, [allYearsRows]);
+
   // Apply date filter
   const filtered = useMemo(() => {
-    if (!dashFilter.from && !dashFilter.to) return overallRows;
-    return FE.filterByDate(overallRows, dashFilter.from, dashFilter.to);
-  }, [overallRows, dashFilter.from, dashFilter.to]);
+    if (!dashFilter.from && !dashFilter.to) return displayRows;
+    return FE.filterByDate(displayRows, dashFilter.from, dashFilter.to);
+  }, [displayRows, dashFilter.from, dashFilter.to]);
 
   const metrics = useMemo(() => FE.dashboardMetrics(filtered, settings.displayCurrency, settings.exchangeRate), [filtered, settings.displayCurrency, settings.exchangeRate]);
   const charts = useMemo(() => FE.chartData(filtered), [filtered]);
@@ -41,13 +68,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      {/* Simple Filter Bar */}
+      {/* Filter Bar */}
       <div style={{ padding: "10px 16px", background: "var(--color-background-secondary)", borderBottom: "0.5px solid var(--color-border-tertiary)", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>
           <Icon n="ti-calendar" size={14} style={{ marginRight: 4 }} />Date Range:
         </span>
         
-        {/* From Month */}
         <input
           type="month"
           value={dashFilter.from}
@@ -66,7 +92,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         
         <span style={{ color: "var(--color-text-tertiary)" }}>→</span>
         
-        {/* To Month */}
         <input
           type="month"
           value={dashFilter.to}
@@ -83,7 +108,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           }}
         />
 
-        {/* Clear Button - Only show when filters are active */}
         {(dashFilter.from || dashFilter.to) && (
           <button
             onClick={handleClearFilters}
@@ -125,7 +149,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Rest of Dashboard */}
       <div style={S.content}>
         {/* Metric Cards */}
         <div style={S.metricsGrid}>
@@ -143,24 +166,76 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ))}
         </div>
 
+        {/* Year Toggle - Below metric cards */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+          <div style={{ 
+            display: "flex", 
+            background: "var(--color-background-secondary)", 
+            borderRadius: 8, 
+            padding: 3,
+            gap: 2
+          }}>
+            <button
+              onClick={() => setShowAllYears(false)}
+              style={{
+                padding: "5px 14px",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 500,
+                background: !showAllYears ? "#185FA5" : "transparent",
+                color: !showAllYears ? "white" : "var(--color-text-secondary)",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.15s"
+              }}
+            >
+              <Icon n="ti-calendar" size={12} style={{ marginRight: 4 }} />
+              {activeYear ? `Year ${activeYear}` : 'Current Year'}
+            </button>
+            <button
+              onClick={() => setShowAllYears(true)}
+              style={{
+                padding: "5px 14px",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 500,
+                background: showAllYears ? "#1D9E75" : "transparent",
+                color: showAllYears ? "white" : "var(--color-text-secondary)",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.15s"
+              }}
+            >
+              <Icon n="ti-chart-bar" size={12} style={{ marginRight: 4 }} />
+              All Years ({yearCount})
+            </button>
+          </div>
+        </div>
+
         {/* Charts */}
         <div style={S.chartsGrid}>
           <div style={S.card}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>Monthly trend</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>
+              {showAllYears ? "Monthly trend (All Years Combined)" : "Monthly trend"}
+            </div>
             <MiniBar data={charts.bar} />
           </div>
           <div style={S.card}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>Expense breakdown</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>
+              {showAllYears ? "Expense breakdown (All Years)" : "Expense breakdown"}
+            </div>
             <MiniDonut data={charts.donut} />
           </div>
         </div>
 
         {/* Recent Transactions */}
         <div style={S.card}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>Recent transactions</div>
+          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>
+            Recent transactions {showAllYears ? "(All Years)" : `(${activeYear || 'Current Year'})`}
+          </div>
           {recent.length === 0 ? (
             <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", textAlign: "center", padding: "20px 0" }}>
-              {overallRows.length === 0 ? "No transactions yet. Add data to your tables!" : "No transactions in selected date range"}
+              {displayRows.length === 0 ? "No transactions yet. Add data to your tables!" : "No transactions in selected date range"}
             </div>
           ) : (
             recent.map((r, i) => (
@@ -171,7 +246,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)" }}>{r.subcategory}</div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>{r.category}</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
+                      {r.category} · {r.month || "-- ----"}
+                      {showAllYears && <span style={{ marginLeft: 6, color: "#1D9E75" }}>({r.year})</span>}
+                    </div>
                   </div>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 500, color: r.type === "Income" ? "#27500A" : "#712B13" }}>

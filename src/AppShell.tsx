@@ -5,6 +5,7 @@ import { DashboardView } from './components/dashboard/DashboardView';
 import { OverallView } from './components/overall/OverallView';
 import { TableView } from './components/table/TableView';
 import { EmptyState } from './components/shared/EmptyState';
+import { AllYearsOverview } from './components/allyears/AllYearsOverview';  // ADD THIS IMPORT
 import { AddYearModal, AddTabModal, TableModal, DeleteConfirmModal } from './components/modals';
 import { useFinanceStore } from './hooks/useFinanceStore';
 import { S, TYPE_C, TYPE_ICON } from './lib/constants';
@@ -70,6 +71,16 @@ export const AppShell: React.FC = () => {
       exportService.exportOverall(monthly, category, activeYear || 0);
     } else if (activeView === 'table' && currentTable) {
       exportService.exportTable(currentRows, currentTable, activeYear || 0);
+    } else if (activeView === 'allyears') {
+      // Export all years data
+      const allRows: any[] = [];
+      for (const year in allYearsRowsData) {
+        allRows.push(...allYearsRowsData[year].map(r => ({ ...r, year })));
+      }
+      const ws = XLSX.utils.json_to_sheet(allRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'All Years');
+      XLSX.writeFile(wb, `All_Years_Data.xlsx`);
     }
   };
 
@@ -80,7 +91,7 @@ export const AppShell: React.FC = () => {
       rowsByTable,
       settings,
       exportDate: new Date().toISOString(),
-      version: '3.1.0',
+      version: '3.2.0',
     };
     exportService.exportBackup(backup);
     toast.success('Backup exported');
@@ -119,29 +130,55 @@ export const AppShell: React.FC = () => {
       />
 
       <div style={S.main}>
-        {activeView === 'dashboard' && (
+        {/* Dashboard - Current Year */}
+        {/* Dashboard - with toggle */}
+{activeView === 'dashboard' && (
+  <>
+    <Topbar
+      rate={settings.exchangeRate}
+      onRateUpdate={updateRate}
+      left={<><Icon n="ti-layout-dashboard" size={15} color="var(--color-text-tertiary)" />Dashboard</>}
+      right={
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>
+          <Button variant="default" small onClick={handleBackupExport}><Icon n="ti-download" size={12} />Backup</Button>
+        </div>
+      }
+    />
+    <DashboardView
+      overallRows={overallRowsData}
+      allYearsRows={allYearsRowsData}
+      settings={settings}
+      dashFilter={dashFilter}
+      onFilterChange={(patch) => dispatch({ type: 'SET_DASH_FILTER', patch })}
+      onCurrencyChange={(cur) => updateDisplayCurrency(cur)}
+      activeYear={activeYear}
+    />
+  </>
+)}
+
+        {/* All Years Overview - NEW */}
+        {activeView === 'allyears' && (
           <>
             <Topbar
               rate={settings.exchangeRate}
               onRateUpdate={updateRate}
-              left={<><Icon n="ti-layout-dashboard" size={15} color="var(--color-text-tertiary)" />Dashboard</>}
+              left={<><Icon n="ti-chart-bar" size={15} color="#1D9E75" />All Years Overview</>}
               right={
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>
+                  <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export All</Button>
                   <Button variant="default" small onClick={handleBackupExport}><Icon n="ti-download" size={12} />Backup</Button>
                 </div>
               }
             />
-            <DashboardView
-              overallRows={overallRowsData}
+            <AllYearsOverview
+              allYearsRows={allYearsRowsData}
               settings={settings}
-              dashFilter={dashFilter}
-              onFilterChange={(patch) => dispatch({ type: 'SET_DASH_FILTER', patch })}
-              onCurrencyChange={(cur) => updateDisplayCurrency(cur)}
             />
           </>
         )}
 
+        {/* Overall - Current Year Detailed */}
         {activeView === 'overall' && (
           <>
             <Topbar
@@ -160,6 +197,7 @@ export const AppShell: React.FC = () => {
           </>
         )}
 
+        {/* Tab View */}
         {activeView === 'tab' && currentTab && (
           <>
             <Topbar
@@ -224,6 +262,7 @@ export const AppShell: React.FC = () => {
           </>
         )}
 
+        {/* Table View */}
         {activeView === 'table' && currentTable && (
           <>
             <Topbar
@@ -248,37 +287,40 @@ export const AppShell: React.FC = () => {
       {modal?.kind === 'addYear' && (
         <AddYearModal
           existingYears={years.map(y => ({ id: y.id, year: y.year }))}
-          onSave={(year, mode, copyFromYearId) => {
-            createYear(year, mode === 'copy' ? copyFromYearId : undefined);
+          onSave={async (year, mode, copyFromYearId) => {
+            await createYear(year, mode === 'copy' ? copyFromYearId : undefined);
             dispatch({ type: 'SET_MODAL', modal: null });
           }}
           onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
         />
       )}
+
       {modal?.kind === 'addTab' && (
-  <AddTabModal
-    onSave={async (name, icon) => {
-      await createTab(modal.yearId, name, icon);
-      dispatch({ type: 'SET_MODAL', modal: null });
-    }}
-    onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
-  />
-)}
+        <AddTabModal
+          onSave={async (name, icon) => {
+            await createTab(modal.yearId, name, icon);
+            dispatch({ type: 'SET_MODAL', modal: null });
+          }}
+          onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
+        />
+      )}
+
       {modal?.kind === 'addTable' && currentTab && (
-  <TableModal
-    onSave={async (data) => {
-      await createTable(modal.tabId, data.name, data.type, data.fields);
-      dispatch({ type: 'SET_MODAL', modal: null });  // MAKE SURE THIS LINE EXISTS
-    }}
-    onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
-  />
-)}
+        <TableModal
+          onSave={async (data) => {
+            await createTable(modal.tabId, data.name, data.type, data.fields);
+            dispatch({ type: 'SET_MODAL', modal: null });
+          }}
+          onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
+        />
+      )}
+
       {modal?.kind === 'editTable' && (
         <TableModal
           initial={modal.table}
           hasRows={(rowsByTable[modal.table?.id] || []).length > 0}
-          onSave={(data) => {
-            updateTable(modal.tabId, modal.table.id, data.name, data.type, data.fields);
+          onSave={async (data) => {
+            await updateTable(modal.tabId, modal.table.id, data.name, data.type, data.fields);
             dispatch({ type: 'SET_MODAL', modal: null });
           }}
           onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
@@ -287,30 +329,30 @@ export const AppShell: React.FC = () => {
 
       {/* Delete confirms */}
       {deleteTarget?.type === 'table' && (
-  <DeleteConfirmModal
-    name={deleteTarget.name}
-    rowCount={deleteTarget.count}
-    entityType="table"
-    onConfirm={() => {
-      deleteTable(deleteTarget.tabId, deleteTarget.tableId);
-      dispatch({ type: 'SET_DELETE_TARGET', target: null });  // ADD THIS LINE
-    }}
-    onClose={() => dispatch({ type: 'SET_DELETE_TARGET', target: null })}
-  />
-)}
+        <DeleteConfirmModal
+          name={deleteTarget.name}
+          rowCount={deleteTarget.count}
+          entityType="table"
+          onConfirm={() => {
+            deleteTable(deleteTarget.tabId, deleteTarget.tableId);
+            dispatch({ type: 'SET_DELETE_TARGET', target: null });
+          }}
+          onClose={() => dispatch({ type: 'SET_DELETE_TARGET', target: null })}
+        />
+      )}
 
-{deleteTarget?.type === 'tab' && (
-  <DeleteConfirmModal
-    name={deleteTarget.name}
-    rowCount={deleteTarget.count}
-    entityType="tab"
-    onConfirm={() => {
-      deleteTab(deleteTarget.tabId);
-      dispatch({ type: 'SET_DELETE_TARGET', target: null });  // ADD THIS LINE
-    }}
-    onClose={() => dispatch({ type: 'SET_DELETE_TARGET', target: null })}
-  />
-)}
+      {deleteTarget?.type === 'tab' && (
+        <DeleteConfirmModal
+          name={deleteTarget.name}
+          rowCount={deleteTarget.count}
+          entityType="tab"
+          onConfirm={() => {
+            deleteTab(deleteTarget.tabId);
+            dispatch({ type: 'SET_DELETE_TARGET', target: null });
+          }}
+          onClose={() => dispatch({ type: 'SET_DELETE_TARGET', target: null })}
+        />
+      )}
     </div>
   );
 };

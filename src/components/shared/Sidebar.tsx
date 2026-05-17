@@ -40,20 +40,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     await signOut();
   };
 
-  // Get user's email or name for display
   const userName = user?.email?.split('@')[0] || 'User';
 
   return (
     <div style={S.sidebar}>
-      {/* Header with Logout Button */}
+      {/* Header */}
       <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Icon n="ti-chart-pie-2" size={16} color="#185FA5" />
             <span style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)" }}>Pavan's Finance</span>
           </div>
-          
-          {/* Logout Button - Top Right Corner */}
           <button
             onClick={handleLogout}
             style={{
@@ -66,7 +63,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               alignItems: "center",
               justifyContent: "center",
               color: "var(--color-text-tertiary)",
-              transition: "all 0.15s",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "rgba(216, 90, 48, 0.1)";
@@ -80,16 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Icon n="ti-logout" size={16} />
           </button>
         </div>
-        
-        {/* User Name - Below the header */}
-        <div style={{ 
-          fontSize: 11, 
-          color: "var(--color-text-secondary)",
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          marginTop: 4
-        }}>
+        <div style={{ fontSize: 11, color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
           <Icon n="ti-user" size={11} />
           <span>{userName}</span>
           <span style={{ fontSize: 9, color: "var(--color-text-tertiary)" }}>· v3.2</span>
@@ -98,8 +85,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
         <div style={S.secLabel}>OVERVIEW</div>
+        
+        {/* Dashboard - Current Year */}
         <div style={S.sbItem(activeView === "dashboard")} onClick={() => onNavigate("dashboard", activeYearId)}>
           <Icon n="ti-layout-dashboard" size={14} color={activeView === "dashboard" ? "#185FA5" : "var(--color-text-tertiary)"} />Dashboard
+        </div>
+
+        {/* All Years Overview - NEW */}
+        <div style={S.sbItem(activeView === "allyears")} onClick={() => onNavigate("allyears", null)}>
+          <Icon n="ti-chart-bar" size={14} color={activeView === "allyears" ? "#1D9E75" : "var(--color-text-tertiary)"} />All Years Overview
         </div>
 
         <div style={{ ...S.secLabel, marginTop: 6 }}>YEARS</div>
