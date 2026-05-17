@@ -2,7 +2,6 @@ import { supabase } from '../lib/supabase';
 import { Tab, Table, Field, Row, UserSettings } from '../types/finance';
 
 export const financeService = {
-  // Years
   async fetchYears(): Promise<{ id: string; year: number }[]> {
     const { data, error } = await supabase
       .from('years')
@@ -33,12 +32,41 @@ export const financeService = {
     if (error) throw error;
   },
 
-  async deleteYear(yearId: string): Promise<void> {
-    const { error } = await supabase.from('years').delete().eq('id', yearId);
+  async fetchSettings(): Promise<UserSettings | null> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return null;
+    
+    // Fixed: Use .maybeSingle() instead of .single() with error handling
+    const { data, error } = await supabase
+      .from('settings')
+      .select('exchange_rate, display_currency')
+      .eq('user_id', userData.user.id)
+      .maybeSingle();
+    
+    if (error) throw error;
+    if (!data) return null;
+    
+    return {
+      exchangeRate: data.exchange_rate,
+      displayCurrency: data.display_currency as 'USD' | 'INR',
+    };
+  },
+
+  async saveSettings(settings: UserSettings): Promise<void> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('Not authenticated');
+    
+    const { error } = await supabase
+      .from('settings')
+      .upsert({
+        user_id: userData.user.id,
+        exchange_rate: settings.exchangeRate,
+        display_currency: settings.displayCurrency,
+        updated_at: new Date().toISOString(),
+      });
     if (error) throw error;
   },
 
-  // Tabs - Using nested select for performance
   async fetchFullYearData(yearId: string): Promise<Tab[]> {
     const { data, error } = await supabase
       .from('tabs')
@@ -84,17 +112,11 @@ export const financeService = {
     return { ...data, tables: [] };
   },
 
-  async updateTab(tabId: string, updates: Partial<Tab>): Promise<void> {
-    const { error } = await supabase.from('tabs').update(updates).eq('id', tabId);
-    if (error) throw error;
-  },
-
   async deleteTab(tabId: string): Promise<void> {
     const { error } = await supabase.from('tabs').delete().eq('id', tabId);
     if (error) throw error;
   },
 
-  // Tables
   async createTable(tabId: string, name: string, type: string): Promise<Table> {
     const { data, error } = await supabase
       .from('tables')
@@ -115,7 +137,6 @@ export const financeService = {
     if (error) throw error;
   },
 
-  // Fields with diffing (not delete/reinsert)
   async fetchFields(tableId: string): Promise<Field[]> {
     const { data, error } = await supabase
       .from('fields')
@@ -173,7 +194,6 @@ export const financeService = {
     ]);
   },
 
-  // Rows with upsert and version tracking
   async fetchRows(tableId: string): Promise<Row[]> {
     const { data, error } = await supabase
       .from('rows')
@@ -193,7 +213,6 @@ export const financeService = {
       .insert({
         table_id: tableId,
         data_json: rowData,
-        version: 1,
       })
       .select()
       .single();
@@ -201,13 +220,12 @@ export const financeService = {
     return { id: data.id, ...data.data_json };
   },
 
+  // Fixed: Removed last_modified_by reference
   async updateRow(rowId: string, rowData: any): Promise<void> {
-    const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase
       .from('rows')
       .update({ 
         data_json: rowData, 
-        last_modified_by: userData.user?.id,
         updated_at: new Date().toISOString(),
       })
       .eq('id', rowId);
@@ -216,41 +234,6 @@ export const financeService = {
 
   async deleteRow(rowId: string): Promise<void> {
     const { error } = await supabase.from('rows').delete().eq('id', rowId);
-    if (error) throw error;
-  },
-
-  // Settings
-  async fetchSettings(): Promise<UserSettings | null> {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return null;
-    
-    const { data, error } = await supabase
-      .from('settings')
-      .select('exchange_rate, display_currency')
-      .eq('user_id', userData.user.id)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    if (!data) return null;
-    
-    return {
-      exchangeRate: data.exchange_rate,
-      displayCurrency: data.display_currency as 'USD' | 'INR',
-    };
-  },
-
-  async saveSettings(settings: UserSettings): Promise<void> {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error('Not authenticated');
-    
-    const { error } = await supabase
-      .from('settings')
-      .upsert({
-        user_id: userData.user.id,
-        exchange_rate: settings.exchangeRate,
-        display_currency: settings.displayCurrency,
-        updated_at: new Date().toISOString(),
-      });
     if (error) throw error;
   },
 };

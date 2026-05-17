@@ -1,10 +1,23 @@
 import { useReducer, useCallback, useEffect, useMemo } from 'react';
 import { financeService } from '../services/financeService';
 import { FE } from '../lib/financeEngine';
-import { Tab, Table, Row, OverallRow, UserSettings } from '../types/finance';
+import { Tab, Row, OverallRow, UserSettings } from '../types/finance';
 import toast from 'react-hot-toast';
 
-const SCHEMA_VERSION = 4;
+interface ModalState {
+  kind: string;
+  yearId?: string;
+  tabId?: string;
+  table?: any;
+}
+
+interface DeleteTarget {
+  type: 'table' | 'tab';
+  tabId: string;
+  tableId?: string;
+  name: string;
+  count: number;
+}
 
 interface State {
   years: Array<{ id: string; year: number }>;
@@ -19,11 +32,10 @@ interface State {
   expandedYears: Record<string, boolean>;
   dashFilter: { from: string; to: string; quick: string };
   overallSubView: string;
-  modal: any;
-  deleteTarget: any;
+  modal: ModalState | null;
+  deleteTarget: DeleteTarget | null;
   loading: boolean;
   loaded: boolean;
-  schemaVersion: number;
 }
 
 const initialState: State = {
@@ -43,7 +55,6 @@ const initialState: State = {
   deleteTarget: null,
   loading: false,
   loaded: false,
-  schemaVersion: 0,
 };
 
 type Action =
@@ -65,8 +76,8 @@ type Action =
   | { type: 'TOGGLE_YEAR_EXPANDED'; yearId: string }
   | { type: 'SET_DASH_FILTER'; patch: Partial<State['dashFilter']> }
   | { type: 'SET_OVERALL_SUB_VIEW'; sub: string }
-  | { type: 'SET_MODAL'; modal: any }
-  | { type: 'SET_DELETE_TARGET'; target: any }
+  | { type: 'SET_MODAL'; modal: ModalState | null }
+  | { type: 'SET_DELETE_TARGET'; target: DeleteTarget | null }
   | { type: 'SET_RATE'; rate: number }
   | { type: 'SET_DISPLAY_CURRENCY'; cur: 'USD' | 'INR' };
 
@@ -157,9 +168,6 @@ export function useFinanceStore() {
   const loadData = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', loading: true });
     try {
-      const storedVersion = localStorage.getItem('finance_schema_version');
-      const currentVersion = storedVersion ? parseInt(storedVersion) : 0;
-      
       const [years, settings] = await Promise.all([
         financeService.fetchYears(),
         financeService.fetchSettings(),
@@ -168,24 +176,16 @@ export function useFinanceStore() {
       const tabsByYear: Record<string, Tab[]> = {};
       const rowsByTable: Record<string, Row[]> = {};
 
-      await Promise.all(
-        years.map(async (year) => {
-          const tabs = await financeService.fetchFullYearData(year.id);
-          tabsByYear[year.id] = tabs;
-          
-          await Promise.all(
-            tabs.flatMap(tab =>
-              tab.tables.map(async (table) => {
-                const rows = await financeService.fetchRows(table.id);
-                rowsByTable[table.id] = rows;
-              })
-            )
-          );
-        })
-      );
-
-      if (currentVersion < SCHEMA_VERSION) {
-        localStorage.setItem('finance_schema_version', String(SCHEMA_VERSION));
+      for (const year of years) {
+        const tabs = await financeService.fetchFullYearData(year.id);
+        tabsByYear[year.id] = tabs;
+        
+        for (const tab of tabs) {
+          for (const table of tab.tables) {
+            const rows = await financeService.fetchRows(table.id);
+            rowsByTable[table.id] = rows;
+          }
+        }
       }
 
       const activeYear = years[0] || null;
@@ -201,7 +201,6 @@ export function useFinanceStore() {
           activeYearId: activeYear?.id || null,
           activeYear: activeYear?.year || null,
           expandedYears: activeYear ? { [activeYear.id]: true } : {},
-          schemaVersion: SCHEMA_VERSION,
         },
       });
     } catch (error) {
@@ -213,6 +212,15 @@ export function useFinanceStore() {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  // Simple refetch on window focus (instead of broken realtime)
+  useEffect(() => {
+    const handleFocus = () => {
+      loadData();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [loadData]);
 
   const updateRate = useCallback(async (rate: number) => {

@@ -7,7 +7,6 @@ import { TableView } from './components/table/TableView';
 import { EmptyState } from './components/shared/EmptyState';
 import { AddYearModal, AddTabModal, TableModal, DeleteConfirmModal } from './components/modals';
 import { useFinanceStore } from './hooks/useFinanceStore';
-import { useRealtimeSync } from './hooks/useRealtimeSync';
 import { S, TYPE_C, TYPE_ICON } from './lib/constants';
 import { Icon } from './components/shared/Icon';
 import { Button } from './components/shared/Button';
@@ -34,9 +33,6 @@ export const AppShell: React.FC = () => {
     overallRows,
     allYearsRows,
   } = useFinanceStore();
-
-  // Enable realtime sync for multi-device
-  useRealtimeSync();
 
   const {
     years,
