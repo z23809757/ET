@@ -279,20 +279,21 @@ export function useFinanceStore() {
   }, [state.years, state.tabsByYear]);
 
   const updateTable = useCallback(async (tabId: string, tableId: string, name: string, type: string, fields: any[]) => {
-    await financeService.updateTable(tableId, { name, type });
-    await financeService.saveFields(tableId, fields);
-    
-    const yearId = state.years.find(y => 
-      state.tabsByYear[y.id]?.some(t => t.id === tabId)
-    )?.id;
-    
-    if (yearId) {
-      const tabs = await financeService.fetchFullYearData(yearId);
-      dispatch({ type: 'SET_TABS', yearId, tabs });
-    }
-    
-    toast.success(`Table "${name}" updated`);
-  }, [state.years, state.tabsByYear]);
+  await financeService.updateTable(tableId, { name, type });
+  await financeService.saveFields(tableId, fields);
+  
+  const yearId = state.years.find(y => 
+    state.tabsByYear[y.id]?.some(t => t.id === tabId)
+  )?.id;
+  
+  if (yearId) {
+    // Refresh the entire year data to update the overall calculation
+    const tabs = await financeService.fetchFullYearData(yearId);
+    dispatch({ type: 'SET_TABS', yearId, tabs });
+  }
+  
+  toast.success(`Table "${name}" updated`);
+}, [state.years, state.tabsByYear]);
 
   const addRow = useCallback(async (tableId: string, rowData: any) => {
     const newRow = await financeService.addRow(tableId, rowData);
