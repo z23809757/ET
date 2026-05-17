@@ -11,12 +11,14 @@ interface SidebarProps {
   activeTabId: string | null;
   activeView: string;
   expandedYears: Record<string, boolean>;
+  isOpen: boolean;
   onNavigate: (view: string, yearId: string | null, tabId?: string | null, tableId?: string | null) => void;
   onToggleYear: (yearId: string) => void;
   onAddYear: () => void;
   onAddTab: (yearId: string) => void;
   onDeleteTab: (tabId: string, name: string, count: number) => void;
   onDeleteTable: (tabId: string, tableId: string, name: string, count: number) => void;
+  onClose: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -27,12 +29,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTabId,
   activeView,
   expandedYears,
+  isOpen,
   onNavigate,
   onToggleYear,
   onAddYear,
   onAddTab,
   onDeleteTab,
   onDeleteTable,
+  onClose,
 }) => {
   const { signOut, user } = useAuth();
 
@@ -43,39 +47,67 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User';
   const appName = `${displayName}'s ET`;
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <div style={S.sidebar}>
-      {/* Header - Clean version */}
+      {/* Header with Close Button */}
       <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Icon n="ti-chart-pie-2" size={18} color="#185FA5" />
             <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)" }}>{appName}</span>
           </div>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: "6px",
-              borderRadius: 6,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--color-text-tertiary)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(216, 90, 48, 0.1)";
-              e.currentTarget.style.color = "#D85A30";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--color-text-tertiary)";
-            }}
-          >
-            <Icon n="ti-logout" size={18} />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={onClose}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "6px",
+                borderRadius: 6,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--color-text-tertiary)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(0, 0, 0, 0.05)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <Icon n="ti-chevron-left" size={16} />
+            </button>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "6px",
+                borderRadius: 6,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--color-text-tertiary)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(216, 90, 48, 0.1)";
+                e.currentTarget.style.color = "#D85A30";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--color-text-tertiary)";
+              }}
+            >
+              <Icon n="ti-logout" size={16} />
+            </button>
+          </div>
         </div>
       </div>
 

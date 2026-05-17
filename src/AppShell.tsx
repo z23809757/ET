@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from './components/shared/Sidebar';
 import { Topbar } from './components/shared/Topbar';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { OverallView } from './components/overall/OverallView';
 import { TableView } from './components/table/TableView';
 import { EmptyState } from './components/shared/EmptyState';
-import { AllYearsOverview } from './components/allyears/AllYearsOverview';  // ADD THIS IMPORT
+import { AllYearsOverview } from './components/allyears/AllYearsOverview';
 import { AddYearModal, AddTabModal, TableModal, DeleteConfirmModal } from './components/modals';
 import { useFinanceStore } from './hooks/useFinanceStore';
 import { S, TYPE_C, TYPE_ICON } from './lib/constants';
@@ -17,6 +17,8 @@ import { formatUSD, formatINR } from './lib/formatters';
 import toast from 'react-hot-toast';
 
 export const AppShell: React.FC = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  
   const {
     state,
     dispatch,
@@ -72,7 +74,6 @@ export const AppShell: React.FC = () => {
     } else if (activeView === 'table' && currentTable) {
       exportService.exportTable(currentRows, currentTable, activeYear || 0);
     } else if (activeView === 'allyears') {
-      // Export all years data
       const allRows: any[] = [];
       for (const year in allYearsRowsData) {
         allRows.push(...allYearsRowsData[year].map(r => ({ ...r, year })));
@@ -107,6 +108,7 @@ export const AppShell: React.FC = () => {
 
   return (
     <div style={S.app}>
+      {/* Sidebar */}
       <Sidebar
         years={years}
         tabsByYear={tabsByYear}
@@ -115,6 +117,7 @@ export const AppShell: React.FC = () => {
         activeTabId={activeTabId}
         activeView={activeView}
         expandedYears={expandedYears}
+        isOpen={sidebarOpen}
         onNavigate={(view, yearId, tabId, tableId) => {
           const year = years.find(y => y.id === yearId);
           dispatch({ type: 'SET_ACTIVE_YEAR', yearId: yearId || '', year: year?.year || 0 });
@@ -127,66 +130,102 @@ export const AppShell: React.FC = () => {
         onAddTab={(yearId) => dispatch({ type: 'SET_MODAL', modal: { kind: 'addTab', yearId } })}
         onDeleteTab={(tabId, name, count) => dispatch({ type: 'SET_DELETE_TARGET', target: { type: 'tab', tabId, name, count } })}
         onDeleteTable={(tabId, tableId, name, count) => dispatch({ type: 'SET_DELETE_TARGET', target: { type: 'table', tabId, tableId, name, count } })}
+        onClose={() => setSidebarOpen(false)}
       />
 
-      <div style={S.main}>
-        {/* Dashboard - Current Year */}
-        {/* Dashboard - with toggle */}
-{activeView === 'dashboard' && (
-  <>
-    <Topbar
-      rate={settings.exchangeRate}
-      onRateUpdate={updateRate}
-      left={<><Icon n="ti-layout-dashboard" size={15} color="var(--color-text-tertiary)" />Dashboard</>}
-      right={
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>
-          <Button variant="default" small onClick={handleBackupExport}><Icon n="ti-download" size={12} />Backup</Button>
-        </div>
-      }
-    />
-    <DashboardView
-      overallRows={overallRowsData}
-      allYearsRows={allYearsRowsData}
-      settings={settings}
-      dashFilter={dashFilter}
-      onFilterChange={(patch) => dispatch({ type: 'SET_DASH_FILTER', patch })}
-      onCurrencyChange={(cur) => updateDisplayCurrency(cur)}
-      activeYear={activeYear}
-    />
-  </>
-)}
-
-        {/* All Years Overview - NEW */}
-        {activeView === 'allyears' && (
-          <>
-            <Topbar
-              rate={settings.exchangeRate}
-              onRateUpdate={updateRate}
-              left={<><Icon n="ti-chart-bar" size={15} color="#1D9E75" />All Years Overview</>}
-              right={
-                <div style={{ display: 'flex', gap: 8 }}>
+      {/* Main Content */}
+      <div style={{ ...S.main, marginLeft: sidebarOpen ? 0 : 0 }}>
+        {/* Topbar with Menu Button */}
+        <div style={S.topbar}>
+          <div style={S.topLeft}>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px",
+                borderRadius: 6,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--color-text-secondary)",
+                marginRight: 8,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(0, 0, 0, 0.05)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <Icon n={sidebarOpen ? "ti-menu-2" : "ti-menu"} size={18} />
+            </button>
+            {activeView === 'dashboard' && (
+              <><Icon n="ti-layout-dashboard" size={15} color="var(--color-text-tertiary)" />Dashboard</>
+            )}
+            {activeView === 'allyears' && (
+              <><Icon n="ti-chart-bar" size={15} color="#1D9E75" />All Years Overview</>
+            )}
+            {activeView === 'overall' && (
+              <><Icon n="ti-table-alias" size={15} color="var(--color-text-tertiary)" />Overall — {activeYear}</>
+            )}
+            {activeView === 'tab' && currentTab && (
+              <><Icon n={currentTab.icon || 'ti-folder'} size={15} color="var(--color-text-tertiary)" />{currentTab.name} — {activeYear}</>
+            )}
+            {activeView === 'table' && currentTable && (
+              <><Icon n="ti-table" size={15} color="var(--color-text-tertiary)" />{currentTable.name}</>
+            )}
+          </div>
+          <div style={S.topRight}>
+            {activeView !== 'table' && (
+              <>
+                {activeView === 'dashboard' && (
+                  <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>
+                )}
+                {activeView === 'allyears' && (
                   <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export All</Button>
-                  <Button variant="default" small onClick={handleBackupExport}><Icon n="ti-download" size={12} />Backup</Button>
-                </div>
-              }
+                )}
+                {activeView === 'overall' && (
+                  <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>
+                )}
+                {activeView === 'tab' && currentTab && (
+                  <Button variant="blue" small onClick={() => dispatch({ type: 'SET_MODAL', modal: { kind: 'addTable', tabId: currentTab.id } })}>
+                    <Icon n="ti-plus" size={12} />Add table
+                  </Button>
+                )}
+              </>
+            )}
+            {activeView === 'table' && currentTable && (
+              <Button variant="default" small onClick={handleExport}><Icon n="ti-download" size={12} />Export</Button>
+            )}
+            <Button variant="default" small onClick={handleBackupExport}><Icon n="ti-download" size={12} />Backup</Button>
+            <RatePill rate={settings.exchangeRate} onRateUpdate={updateRate} />
+          </div>
+        </div>
+
+        {/* Rest of the content */}
+        <div style={{ flex: 1, overflow: "auto" }}>
+          {activeView === 'dashboard' && (
+            <DashboardView
+              overallRows={overallRowsData}
+              allYearsRows={allYearsRowsData}
+              settings={settings}
+              dashFilter={dashFilter}
+              onFilterChange={(patch) => dispatch({ type: 'SET_DASH_FILTER', patch })}
+              onCurrencyChange={(cur) => updateDisplayCurrency(cur)}
+              activeYear={activeYear}
             />
+          )}
+
+          {activeView === 'allyears' && (
             <AllYearsOverview
               allYearsRows={allYearsRowsData}
               settings={settings}
             />
-          </>
-        )}
+          )}
 
-        {/* Overall - Current Year Detailed */}
-        {activeView === 'overall' && (
-          <>
-            <Topbar
-              rate={settings.exchangeRate}
-              onRateUpdate={updateRate}
-              left={<><Icon n="ti-table-alias" size={15} color="var(--color-text-tertiary)" />Overall — {activeYear}</>}
-              right={<Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>}
-            />
+          {activeView === 'overall' && (
             <OverallView
               overallRows={overallRowsData}
               allYearsRows={allYearsRowsData}
@@ -194,18 +233,9 @@ export const AppShell: React.FC = () => {
               subView={overallSubView}
               onSubViewChange={(sub) => dispatch({ type: 'SET_OVERALL_SUB_VIEW', sub })}
             />
-          </>
-        )}
+          )}
 
-        {/* Tab View */}
-        {activeView === 'tab' && currentTab && (
-          <>
-            <Topbar
-              rate={settings.exchangeRate}
-              onRateUpdate={updateRate}
-              left={<><Icon n={currentTab.icon || 'ti-folder'} size={15} color="var(--color-text-tertiary)" />{currentTab.name} — {activeYear}</>}
-              right={<Button variant="blue" small onClick={() => dispatch({ type: 'SET_MODAL', modal: { kind: 'addTable', tabId: currentTab.id } })}><Icon n="ti-plus" size={12} />Add table</Button>}
-            />
+          {activeView === 'tab' && currentTab && (
             <div style={S.content}>
               {(!currentTab.tables || currentTab.tables.length === 0) ? (
                 <EmptyState
@@ -259,18 +289,9 @@ export const AppShell: React.FC = () => {
                 </div>
               )}
             </div>
-          </>
-        )}
+          )}
 
-        {/* Table View */}
-        {activeView === 'table' && currentTable && (
-          <>
-            <Topbar
-              rate={settings.exchangeRate}
-              onRateUpdate={updateRate}
-              left={<Crumb parts={[currentTab?.name || '', currentTable.name]} />}
-              right={<Button variant="default" small onClick={handleExport}><Icon n="ti-download" size={12} />Export</Button>}
-            />
+          {activeView === 'table' && currentTable && (
             <TableView
               table={currentTable}
               rows={currentRows}
@@ -279,8 +300,8 @@ export const AppShell: React.FC = () => {
               onEditRow={(id, data) => updateRow(currentTable.id, id, data)}
               onDeleteRow={(id) => deleteRow(currentTable.id, id)}
             />
-          </>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Modals */}
@@ -357,13 +378,42 @@ export const AppShell: React.FC = () => {
   );
 };
 
-const Crumb: React.FC<{ parts: string[] }> = ({ parts }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-    {parts.map((p, i) => (
-      <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        {i > 0 && <Icon n="ti-chevron-right" size={11} color="var(--color-text-tertiary)" />}
-        <span style={{ fontSize: i === parts.length - 1 ? 14 : 12, fontWeight: i === parts.length - 1 ? 500 : 400, color: i === parts.length - 1 ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)' }}>{p}</span>
-      </span>
-    ))}
-  </div>
-);
+// RatePill component (add this if not already present)
+const RatePill: React.FC<{ rate: number; onRateUpdate: (rate: number) => void }> = ({ rate, onRateUpdate }) => {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(String(rate));
+
+  const save = () => {
+    const n = parseFloat(val);
+    if (n > 0) onRateUpdate(n);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", border: "0.5px solid #B5D4F4", borderRadius: 8, background: "#E6F1FB" }}>
+        <span style={{ fontSize: 11, color: "#0C447C" }}>$1 =</span>
+        <input
+          autoFocus
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          style={{ width: 60, fontSize: 11, border: "none", background: "transparent", color: "#0C447C", outline: "none" }}
+        />
+        <span style={{ fontSize: 11, color: "#0C447C" }}>₹</span>
+        <Icon n="ti-check" size={13} color="#185FA5" style={{ cursor: "pointer" }} onClick={save} />
+        <Icon n="ti-x" size={13} color="var(--color-text-tertiary)" style={{ cursor: "pointer" }} onClick={() => setEditing(false)} />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => { setVal(String(rate)); setEditing(true); }}
+      style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 9px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, background: "var(--color-background-secondary)", cursor: "pointer", fontSize: 11, color: "var(--color-text-secondary)" }}
+    >
+      <Icon n="ti-currency-dollar" size={12} />1 = <Icon n="ti-currency-rupee" size={12} />{rate.toFixed(2)}
+      <Icon n="ti-pencil" size={11} color="var(--color-text-tertiary)" />
+    </div>
+  );
+};
