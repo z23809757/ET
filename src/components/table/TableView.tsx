@@ -22,7 +22,6 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
   const [editId, setEditId] = useState<string | null>(null);
   const [delId, setDelId] = useState<string | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
-  const [historyRowId, setHistoryRowId] = useState<string | null>(null);
 
   const startEdit = (row: Row) => {
     setEditId(row.id);
@@ -116,7 +115,6 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
                       ) : (
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <Icon n="ti-edit" size={14} color="#185FA5" style={{ cursor: "pointer" }} onClick={() => startEdit(row)} />
-                          <Icon n="ti-history" size={14} color="#EF9F27" style={{ cursor: "pointer" }} onClick={() => setHistoryRowId(row.id)} />
                           <Icon n="ti-trash" size={14} color="#D85A30" style={{ cursor: "pointer" }} onClick={() => setDelId(row.id)} />
                         </div>
                       )}
@@ -152,17 +150,6 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
           {editId && <span onClick={cancelEdit} style={{ fontSize: 11, color: "var(--color-text-tertiary)", cursor: "pointer" }}>Cancel</span>}
         </div>
       </div>
-
-      {historyRowId && (
-        <RowHistoryModal
-          rowId={historyRowId}
-          onClose={() => setHistoryRowId(null)}
-          onRestore={() => {
-            // Refresh the current view
-            window.location.reload();
-          }}
-        />
-      )}
     </div>
   );
 };
