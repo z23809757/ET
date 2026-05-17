@@ -1,0 +1,7 @@
+{
+  "projectId": "YOUR_PROJECT_ID",
+  "database": {
+    "version": "15",
+    "host": "db.supabase.co"
+  }
+}
