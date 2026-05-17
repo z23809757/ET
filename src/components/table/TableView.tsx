@@ -64,13 +64,14 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     return <input key={f.id} type="text" value={v} onChange={e => set(e.target.value)} placeholder={f.name} style={base} />;
   };
 
-  const fmtCell = (row: Row, f: any) => {
-    const v = row[f.id];
-    if (f.type === "Number" && v != null && v !== "") {
-      return formatField(parseFloat(v) || 0, f.currency, settings.displayCurrency, settings.exchangeRate);
-    }
-    return v || null;
-  };
+const fmtCell = (row: Row, f: any) => {
+  const v = row[f.id];
+  if (f.type === "Number" && v != null && v !== "") {
+    return formatField(parseFloat(v) || 0, f.currency, settings.displayCurrency, settings.exchangeRate);
+  }
+  // Return 6 dashes for empty values
+  return v ? String(v) : "-- ----";
+};
 
   const total = rows.length;
   const startIdx = Math.max(0, Math.floor(scrollTop / ROW_H) - 5);
@@ -102,7 +103,7 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
                   <tr key={row.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)", background: isDel ? "#FFF0F0" : isEd ? "#F0F9E8" : "transparent", height: ROW_H }}>
                     {table.fields.map(f => {
                       const v = fmtCell(row, f);
-                      return <td key={f.id} style={S.td}>{v ?? <span style={{ color: "var(--color-text-tertiary)" }}>—</span>}</td>;
+                      return <td key={f.id} style={S.td}>{v ?? ""}</td>;
                     })}
                     <td style={{ ...S.td, width: 100 }}>
                       {isDel ? (

@@ -1,7 +1,7 @@
 import React from 'react';
 import { S, TYPE_C, TYPE_ICON } from '../../lib/constants';
 import { Icon } from './Icon';
-import { formatUSD, formatINR } from '../../lib/formatters';
+import { useAuth } from '../../hooks/useAuth';
 
 interface SidebarProps {
   years: Array<{ id: string; year: number }>;
@@ -34,13 +34,66 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDeleteTab,
   onDeleteTable,
 }) => {
+  const { signOut, user } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
+
+  // Get user's email or name for display
+  const userName = user?.email?.split('@')[0] || 'User';
+
   return (
     <div style={S.sidebar}>
+      {/* Header with Logout Button */}
       <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)" }}>
-          <Icon n="ti-chart-pie-2" size={16} color="#185FA5" />Pavan's Finance
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon n="ti-chart-pie-2" size={16} color="#185FA5" />
+            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)" }}>Pavan's Finance</span>
+          </div>
+          
+          {/* Logout Button - Top Right Corner */}
+          <button
+            onClick={handleLogout}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px",
+              borderRadius: 6,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--color-text-tertiary)",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(216, 90, 48, 0.1)";
+              e.currentTarget.style.color = "#D85A30";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--color-text-tertiary)";
+            }}
+          >
+            <Icon n="ti-logout" size={16} />
+          </button>
         </div>
-        <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 1 }}>v3.1 · Full Audit Trail</div>
+        
+        {/* User Name - Below the header */}
+        <div style={{ 
+          fontSize: 11, 
+          color: "var(--color-text-secondary)",
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          marginTop: 4
+        }}>
+          <Icon n="ti-user" size={11} />
+          <span>{userName}</span>
+          <span style={{ fontSize: 9, color: "var(--color-text-tertiary)" }}>· v3.2</span>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
@@ -109,6 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </div>
 
+      {/* Add Year Button */}
       <div
         onClick={onAddYear}
         style={{ display: "flex", alignItems: "center", gap: 6, margin: "8px 12px 10px", padding: "6px 10px", border: "0.5px dashed var(--color-border-secondary)", borderRadius: 8, fontSize: 11, color: "var(--color-text-tertiary)", cursor: "pointer" }}

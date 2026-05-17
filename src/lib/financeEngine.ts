@@ -38,15 +38,21 @@ export const FE = {
     return out.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   },
 
-  filterByDate(rows: OverallRow[], from: string, to: string): OverallRow[] {
-    if (!from && !to) return rows;
-    return rows.filter(r => {
-      if (!r.month) return true;
-      if (from && r.month < from) return false;
-      if (to && r.month > to) return false;
-      return true;
-    });
-  },
+filterByDate(rows: OverallRow[], from: string, to: string): OverallRow[] {
+  // If no filters, return all rows
+  if (!from && !to) return rows;
+  
+  return rows.filter(row => {
+    // Skip rows without month data
+    if (!row.month) return false;
+    
+    // Filter by range
+    if (from && row.month < from) return false;
+    if (to && row.month > to) return false;
+    
+    return true;
+  });
+},
 
   dashboardMetrics(rows: OverallRow[], dispCur: string, rate: number): DashboardMetrics {
     let income = 0, expense = 0, loanINR = 0;

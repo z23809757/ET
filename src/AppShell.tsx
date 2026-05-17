@@ -124,7 +124,7 @@ export const AppShell: React.FC = () => {
             <Topbar
               rate={settings.exchangeRate}
               onRateUpdate={updateRate}
-              left={<><Icon n="ti-layout-dashboard" size={15} color="var(--color-text-tertiary)" />Dashboard{activeYear ? ` — ${activeYear}` : ''}</>}
+              left={<><Icon n="ti-layout-dashboard" size={15} color="var(--color-text-tertiary)" />Dashboard</>}
               right={
                 <div style={{ display: 'flex', gap: 8 }}>
                   <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>
