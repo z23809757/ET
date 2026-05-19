@@ -76,7 +76,6 @@ export function useFormulaEvaluation(merges: MergedCell[] = [], state?: any) {
 
   // Handle legacy format: "TableName (Year)!FieldName_UUID"
   const resolveLegacyReference = useCallback((match: string, tablePart: string, fieldName: string, rowId: string): string => {
-    console.log(`  Legacy reference: ${match} -> table: ${tablePart}, field: ${fieldName}, rowId: ${rowId}`);
     
     if (!state) return '0';
     
@@ -119,8 +118,6 @@ export function useFormulaEvaluation(merges: MergedCell[] = [], state?: any) {
     setEvaluating(true);
     try {
       let formula = formulaText.startsWith('=') ? formulaText.substring(1) : formulaText;
-      
-      console.log('📊 Evaluating formula:', formula);
 
       // Handle legacy "TableName (2024)!FieldName_rowId" references FIRST
       // Regex: non-greedy match for table and field names so spaces are supported
@@ -141,7 +138,6 @@ export function useFormulaEvaluation(merges: MergedCell[] = [], state?: any) {
         if (formula.includes(placeholder)) {
           const resolvedVal = resolveMergeValue(merge);
           formula = formula.split(placeholder).join(String(resolvedVal));
-          console.log(`  Resolved ${placeholder} -> ${resolvedVal}`);
         }
       }
 
@@ -150,7 +146,6 @@ export function useFormulaEvaluation(merges: MergedCell[] = [], state?: any) {
         formula = formula.replace(
           /ROW_([a-f0-9-]+)_([a-f0-9-]+)/g,
           (match, rowId, fieldId) => {
-            console.log(`  Looking up ROW: ${match}`);
             for (const year of state.years) {
               const tabs = state.tabsByYear[year.id] || [];
               for (const tab of tabs) {
@@ -187,17 +182,13 @@ export function useFormulaEvaluation(merges: MergedCell[] = [], state?: any) {
       // Remove trailing operators
       formula = formula.replace(/[+\-*/]+$/, '');
       
-      console.log('📊 Final formula to evaluate:', formula);
-      
       if (!formula || formula === '') {
         return 0;
       }
 
       const result = Function('"use strict"; return (' + formula + ')')();
-      console.log('📊 Result:', result);
       return typeof result === 'number' && !isNaN(result) ? result : 0;
     } catch (error) {
-      console.error('Formula evaluation error:', error);
       return 0;
     } finally {
       setEvaluating(false);

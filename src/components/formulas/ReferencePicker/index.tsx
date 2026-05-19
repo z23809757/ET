@@ -54,18 +54,15 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({ references, on
   }, [references, selectedTable, selectedField]);
   
   const handleTableSelect = (tableName: string) => {
-    console.log('Table selected:', tableName);
     setSelectedTable(tableName);
     setSelectedField(null);
   };
   
   const handleFieldSelect = (fieldName: string) => {
-    console.log('Field selected:', fieldName);
     setSelectedField(fieldName);
   };
   
   const handleRowSelect = (reference: CellReference) => {
-    console.log('Row selected:', reference);
     onSelect(reference);
     setShowPicker(false);
     setSelectedTable(null);
