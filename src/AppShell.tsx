@@ -15,6 +15,7 @@ import { exportService } from './services/exportService';
 import { FE } from './lib/financeEngine';
 import { formatUSD, formatINR } from './lib/formatters';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 export const AppShell: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -92,7 +93,7 @@ export const AppShell: React.FC = () => {
       rowsByTable,
       settings,
       exportDate: new Date().toISOString(),
-      version: '3.2.0',
+      version: '4.0.0',
     };
     exportService.exportBackup(backup);
     toast.success('Backup exported');
@@ -108,7 +109,6 @@ export const AppShell: React.FC = () => {
 
   return (
     <div style={S.app}>
-      {/* Sidebar */}
       <Sidebar
         years={years}
         tabsByYear={tabsByYear}
@@ -133,7 +133,6 @@ export const AppShell: React.FC = () => {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main Content */}
       <div style={{ ...S.main, marginLeft: sidebarOpen ? 0 : 0 }}>
         {/* Topbar with Menu Button */}
         <div style={S.topbar}>
@@ -206,18 +205,21 @@ export const AppShell: React.FC = () => {
 
         {/* Rest of the content */}
         <div style={{ flex: 1, overflow: "auto" }}>
+          {/* Dashboard - Shows All Years by default */}
           {activeView === 'dashboard' && (
-            <DashboardView
-              overallRows={overallRowsData}
-              allYearsRows={allYearsRowsData}
-              settings={settings}
-              dashFilter={dashFilter}
-              onFilterChange={(patch) => dispatch({ type: 'SET_DASH_FILTER', patch })}
-              onCurrencyChange={(cur) => updateDisplayCurrency(cur)}
-              activeYear={activeYear}
-            />
+             <DashboardView
+    overallRows={overallRowsData}
+    allYearsRows={allYearsRowsData}
+    settings={settings}
+    dashFilter={dashFilter}
+    onFilterChange={(patch) => dispatch({ type: 'SET_DASH_FILTER', patch })}
+    onCurrencyChange={(cur) => updateDisplayCurrency(cur)}
+    activeYear={activeYear}
+    //selectedYearFromSidebar={activeYear}  // ADD THIS PROP
+  />
           )}
 
+          {/* All Years Overview */}
           {activeView === 'allyears' && (
             <AllYearsOverview
               allYearsRows={allYearsRowsData}
@@ -225,6 +227,7 @@ export const AppShell: React.FC = () => {
             />
           )}
 
+          {/* Overall - Current Year Detailed */}
           {activeView === 'overall' && (
             <OverallView
               overallRows={overallRowsData}
@@ -235,6 +238,7 @@ export const AppShell: React.FC = () => {
             />
           )}
 
+          {/* Tab View */}
           {activeView === 'tab' && currentTab && (
             <div style={S.content}>
               {(!currentTab.tables || currentTab.tables.length === 0) ? (
@@ -291,6 +295,7 @@ export const AppShell: React.FC = () => {
             </div>
           )}
 
+          {/* Table View */}
           {activeView === 'table' && currentTable && (
             <TableView
               table={currentTable}
@@ -378,7 +383,7 @@ export const AppShell: React.FC = () => {
   );
 };
 
-// RatePill component (add this if not already present)
+// RatePill component
 const RatePill: React.FC<{ rate: number; onRateUpdate: (rate: number) => void }> = ({ rate, onRateUpdate }) => {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(String(rate));

@@ -132,10 +132,15 @@ export const financeService = {
     if (error) throw error;
   },
 
-  async deleteTable(tableId: string): Promise<void> {
-    const { error } = await supabase.from('tables').delete().eq('id', tableId);
-    if (error) throw error;
-  },
+// Add to financeService object
+async deleteTable(tableId: string): Promise<void> {
+  // First delete formulas for this table
+  await supabase.from('row_formulas').delete().eq('table_id', tableId);
+  
+  // Then delete the table
+  const { error } = await supabase.from('tables').delete().eq('id', tableId);
+  if (error) throw error;
+},
 
   async fetchFields(tableId: string): Promise<Field[]> {
     const { data, error } = await supabase

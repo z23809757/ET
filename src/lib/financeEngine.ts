@@ -3,40 +3,49 @@ import { MONTHS } from './constants';
 import { formatUSD, formatINR, toUsdInr } from './formatters';
 
 export const FE = {
-  aggregateOverall(
-    tabs: any[],
-    rowsByTable: Record<string, any[]>,
-    rate: number,
-    year: number
-  ): OverallRow[] {
-    const out: OverallRow[] = [];
-    for (const tab of tabs) {
-      for (const tbl of tab.tables || []) {
-        if (!tbl.type || tbl.type === "None") continue;
-        const pf = (tbl.fields || []).find((f: any) => f.isPrimary);
-        if (!pf) continue;
-        const mf = (tbl.fields || []).find((f: any) => f.type === "Month" || f.type === "Date");
-        for (const row of rowsByTable[tbl.id] || []) {
-          const { usd, inr } = toUsdInr(row[pf.id], pf.currency, rate);
-          const rawMonth = mf ? (row[mf.id] || "") : "";
-          out.push({
-            id: row.id,
-            year: year,
-            month: rawMonth ? rawMonth.slice(0, 7) : "",
-            date: rawMonth,
-            category: tab.name,
-            subcategory: tbl.name,
-            type: tbl.type,
-            amtUSD: usd,
-            amtINR: inr,
-            tabId: tab.id,
-            tableId: tbl.id,
-          });
+aggregateOverall(
+  tabs: any[],
+  rowsByTable: Record<string, any[]>,
+  rate: number,
+  year: number
+): OverallRow[] {
+  const out: OverallRow[] = [];
+  for (const tab of tabs) {
+    for (const tbl of tab.tables || []) {
+      if (!tbl.type || tbl.type === "None") continue;
+      // UPDATED LINE - Now includes Formula type
+      const pf = (tbl.fields || []).find((f: any) => f.isPrimary && (f.type === "Number" || f.type === "Formula"));
+      if (!pf) continue;
+      const mf = (tbl.fields || []).find((f: any) => f.type === "Month" || f.type === "Date");
+      for (const row of rowsByTable[tbl.id] || []) {
+        // For formula fields, we need to get the calculated value
+        let amount = row[pf.id];
+        
+        // If it's a formula field and has a calculated value in formulaValues
+        if (pf.type === "Formula" && row._formulaValues?.[pf.id]) {
+          amount = row._formulaValues[pf.id];
         }
+        
+        const { usd, inr } = toUsdInr(amount, pf.currency, rate);
+        const rawMonth = mf ? (row[mf.id] || "") : "";
+        out.push({
+          id: row.id,
+          year: year,
+          month: rawMonth ? rawMonth.slice(0, 7) : "",
+          date: rawMonth,
+          category: tab.name,
+          subcategory: tbl.name,
+          type: tbl.type,
+          amtUSD: usd,
+          amtINR: inr,
+          tabId: tab.id,
+          tableId: tbl.id,
+        });
       }
     }
-    return out.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  },
+  }
+  return out.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+},
 
 filterByDate(rows: OverallRow[], from: string, to: string): OverallRow[] {
   // If no filters, return all rows

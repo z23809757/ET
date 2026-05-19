@@ -50,5 +50,5 @@ export const TYPE_ICON = {
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const TABLER_ICONS = ["ti-home", "ti-receipt", "ti-briefcase", "ti-building-store", "ti-calendar-stats", "ti-car", "ti-plane", "ti-arrows-exchange", "ti-pig-money", "ti-wallet", "ti-coin", "ti-chart-bar", "ti-users", "ti-school", "ti-bolt", "ti-bus", "ti-checklist", "ti-shopping-cart", "ti-heart", "ti-star"];
-export const FIELD_TYPES = ["Text", "Number", "Date", "Month", "Dropdown"];
+export const FIELD_TYPES = ["Text", "Number", "Date", "Month", "Dropdown", "Formula"];
 export const DONUT_COLORS = ["#378ADD", "#D85A30", "#1D9E75", "#EF9F27", "#7F77DD"];

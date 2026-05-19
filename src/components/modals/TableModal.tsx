@@ -56,7 +56,7 @@ export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false
   };
 
   return (
-    <Modal title={initial ? 'Edit table' : 'Create new table'} icon={initial ? 'ti-table-options' : 'ti-table-plus'} onClose={onClose} width={580}>
+    <Modal title={initial ? 'Edit table' : 'Create new table'} icon={initial ? 'ti-table-options' : 'ti-table-plus'} onClose={onClose} width={650}>
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Table name</div>
         <input
@@ -103,7 +103,7 @@ export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false
                       </select>
                     </td>
                     <td style={{ padding: '5px 6px' }}>
-                      {f.type === 'Number' ? (
+                      {(f.type === 'Number' || f.type === 'Formula') ? (
                         <select
                           value={f.currency}
                           onChange={e => updateField(i, 'currency', e.target.value as any)}
@@ -118,7 +118,7 @@ export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false
                       )}
                     </td>
                     <td style={{ padding: '5px 6px', textAlign: 'center' }}>
-                      {f.type === 'Number' ? (
+                      {(f.type === 'Number' || f.type === 'Formula') ? (
                         f.isPrimary ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '2px 6px', borderRadius: 20, fontSize: 10, fontWeight: 500, background: '#EAF3DE', color: '#27500A', border: '0.5px solid #C0DD97' }}>
                             <Icon n="ti-check" size={10} />Primary

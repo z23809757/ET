@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { S } from '../../lib/constants';
 import { FE } from '../../lib/financeEngine';
 import { Icon } from '../shared/Icon';
@@ -16,6 +16,7 @@ interface DashboardViewProps {
   onFilterChange: (patch: any) => void;
   onCurrencyChange: (cur: 'USD' | 'INR') => void;
   activeYear?: number | null;
+  selectedYearFromSidebar?: number | null;  // NEW PROP
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -26,9 +27,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onFilterChange,
   onCurrencyChange,
   activeYear,
+  selectedYearFromSidebar,
 }) => {
-  const [showAllYears, setShowAllYears] = useState(false);
+  // Track if we're showing all years or a specific year
+  const [showAllYears, setShowAllYears] = useState(true);
+  // Track the currently selected year (from sidebar)
+  const [currentSelectedYear, setCurrentSelectedYear] = useState<number | null>(null);
 
+  // Listen to sidebar year selection
+  useEffect(() => {
+    if (selectedYearFromSidebar) {
+      setCurrentSelectedYear(selectedYearFromSidebar);
+      setShowAllYears(false);  // Auto switch to year view when sidebar year is clicked
+    }
+  }, [selectedYearFromSidebar]);
+
+  // When user manually clicks "All Years" button
+  const handleAllYearsClick = () => {
+    setShowAllYears(true);
+    setCurrentSelectedYear(null);
+  };
+
+  // When user manually clicks year button
+  const handleYearClick = () => {
+    if (activeYear) {
+      setCurrentSelectedYear(activeYear);
+      setShowAllYears(false);
+    }
+  };
+
+  // Get data based on selection
   const displayRows = useMemo(() => {
     if (showAllYears && allYearsRows) {
       const combined: OverallRow[] = [];
@@ -47,6 +75,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return 1;
   }, [allYearsRows]);
 
+  // Apply date filter
   const filtered = useMemo(() => {
     if (!dashFilter.from && !dashFilter.to) return displayRows;
     return FE.filterByDate(displayRows, dashFilter.from, dashFilter.to);
@@ -61,6 +90,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const handleClearFilters = () => {
     onFilterChange({ from: '', to: '', quick: 'all' });
   };
+
+  // Determine which year to display in the button
+  const displayYear = currentSelectedYear || activeYear;
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -162,7 +194,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ))}
         </div>
 
-        {/* Year Toggle */}
+        {/* Year Toggle - Below metric cards */}
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
           <div style={{ 
             display: "flex", 
@@ -172,7 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             gap: 2
           }}>
             <button
-              onClick={() => setShowAllYears(false)}
+              onClick={handleYearClick}
               style={{
                 padding: "5px 14px",
                 borderRadius: 6,
@@ -186,10 +218,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               }}
             >
               <Icon n="ti-calendar" size={12} style={{ marginRight: 4 }} />
-              {activeYear ? `Year ${activeYear}` : 'Current Year'}
+              {displayYear ? `Year ${displayYear}` : 'Select Year'}
             </button>
             <button
-              onClick={() => setShowAllYears(true)}
+              onClick={handleAllYearsClick}
               style={{
                 padding: "5px 14px",
                 borderRadius: 6,
@@ -212,13 +244,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div style={S.chartsGrid}>
           <div style={S.card}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>
-              {showAllYears ? "Monthly trend (All Years Combined)" : "Monthly trend"}
+              {showAllYears ? "Monthly trend (All Years Combined)" : `Monthly trend (${displayYear})`}
             </div>
             <MiniBar data={charts.bar} />
           </div>
           <div style={S.card}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>
-              {showAllYears ? "Expense breakdown (All Years)" : "Expense breakdown"}
+              {showAllYears ? "Expense breakdown (All Years)" : `Expense breakdown (${displayYear})`}
             </div>
             <MiniDonut data={charts.donut} />
           </div>
@@ -227,7 +259,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Recent Transactions */}
         <div style={S.card}>
           <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>
-            Recent transactions {showAllYears ? "(All Years)" : `(${activeYear || 'Current Year'})`}
+            Recent transactions {showAllYears ? "(All Years)" : `(${displayYear})`}
           </div>
           {recent.length === 0 ? (
             <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", textAlign: "center", padding: "20px 0" }}>
