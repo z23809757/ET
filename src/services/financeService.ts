@@ -36,7 +36,6 @@ export const financeService = {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return null;
     
-    // Fixed: Use .maybeSingle() instead of .single() with error handling
     const { data, error } = await supabase
       .from('settings')
       .select('exchange_rate, display_currency')
@@ -86,21 +85,61 @@ export const financeService = {
       id: tab.id,
       name: tab.name,
       icon: tab.icon,
-      tables: (tab.tables || []).map((table: any) => ({
-        id: table.id,
-        name: table.name,
-        type: table.type,
-        fields: (table.fields || []).map((field: any) => ({
-          id: field.id,
-          name: field.name,
-          type: field.field_type,
-          currency: field.currency,
-          isPrimary: field.is_primary,
-          dropdownOptions: field.dropdown_options_json,
+      tables: (tab.tables || [])
+        .filter((table: any) => !table.is_global) // Don't include global tables here
+        .map((table: any) => ({
+          id: table.id,
+          name: table.name,
+          type: table.type,
+          is_reference: table.is_reference || false,
+          is_global: table.is_global || false,
+          fields: (table.fields || []).map((field: any) => ({
+            id: field.id,
+            name: field.name,
+            type: field.field_type,
+            currency: field.currency,
+            isPrimary: field.is_primary,
+            dropdownOptions: field.dropdown_options_json,
+          })),
         })),
-      })),
     }));
   },
+
+async fetchGlobalTables(): Promise<Table[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error('Not authenticated');
+  
+  const { data, error } = await supabase
+    .from('tables')
+    .select(`
+      *,
+      fields: fields (*)
+    `)
+    .eq('is_global', true)
+    .is('tab_id', null);
+  
+  if (error) {
+    console.error('Error fetching global tables:', error);
+    return [];
+  }
+  
+  return (data || []).map((table: any) => ({
+    id: table.id,
+    name: table.name,
+    type: table.type,
+    is_reference: true,
+    is_global: true,
+    tab_id: null,
+    fields: (table.fields || []).map((field: any) => ({
+      id: field.id,
+      name: field.name,
+      type: field.field_type,
+      currency: field.currency,
+      isPrimary: field.is_primary,
+      dropdownOptions: field.dropdown_options_json,
+    })),
+  }));
+},
 
   async createTab(yearId: string, name: string, icon: string): Promise<Tab> {
     const { data, error } = await supabase
@@ -117,30 +156,54 @@ export const financeService = {
     if (error) throw error;
   },
 
-  async createTable(tabId: string, name: string, type: string): Promise<Table> {
+  async createTable(tabId: string, name: string, type: string, isReference: boolean = false): Promise<Table> {
     const { data, error } = await supabase
       .from('tables')
-      .insert({ tab_id: tabId, name, type })
+      .insert({ tab_id: tabId, name, type, is_reference: isReference, is_global: false })
       .select()
       .single();
     if (error) throw error;
     return { ...data, fields: [] };
   },
 
+async createGlobalTable(name: string, fields: Field[]): Promise<Table> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error('Not authenticated');
+  
+  const { data, error } = await supabase
+    .from('tables')
+    .insert({ 
+      name, 
+      type: 'None',
+      is_reference: true, 
+      is_global: true,
+      tab_id: null
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error creating global table:', error);
+    throw error;
+  }
+  
+  if (fields.length > 0) {
+    await this.saveFields(data.id, fields);
+  }
+  
+  return { ...data, fields };
+},
+
   async updateTable(tableId: string, updates: Partial<Table>): Promise<void> {
     const { error } = await supabase.from('tables').update(updates).eq('id', tableId);
     if (error) throw error;
   },
 
-// Add to financeService object
-async deleteTable(tableId: string): Promise<void> {
-  // First delete formulas for this table
-  await supabase.from('row_formulas').delete().eq('table_id', tableId);
-  
-  // Then delete the table
-  const { error } = await supabase.from('tables').delete().eq('id', tableId);
-  if (error) throw error;
-},
+  async deleteTable(tableId: string): Promise<void> {
+    await supabase.from('row_formulas').delete().eq('table_id', tableId);
+    const { error } = await supabase.from('tables').delete().eq('id', tableId);
+    if (error) throw error;
+  },
 
   async fetchFields(tableId: string): Promise<Field[]> {
     const { data, error } = await supabase
@@ -225,7 +288,6 @@ async deleteTable(tableId: string): Promise<void> {
     return { id: data.id, ...data.data_json };
   },
 
-  // Fixed: Removed last_modified_by reference
   async updateRow(rowId: string, rowData: any): Promise<void> {
     const { error } = await supabase
       .from('rows')

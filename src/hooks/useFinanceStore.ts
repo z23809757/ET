@@ -1,7 +1,7 @@
-import { useReducer, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useReducer, useCallback, useEffect, useMemo } from 'react';
 import { financeService } from '../services/financeService';
 import { FE } from '../lib/financeEngine';
-import { Tab, Row, OverallRow, UserSettings } from '../types/finance';
+import { Tab, Row, OverallRow, UserSettings, Table } from '../types/finance';
 import toast from 'react-hot-toast';
 
 interface ModalState {
@@ -23,6 +23,7 @@ interface State {
   years: Array<{ id: string; year: number }>;
   tabsByYear: Record<string, Tab[]>;
   rowsByTable: Record<string, Row[]>;
+  globalTables: Table[];
   settings: UserSettings;
   activeYearId: string | null;
   activeYear: number | null;
@@ -42,6 +43,7 @@ const initialState: State = {
   years: [],
   tabsByYear: {},
   rowsByTable: {},
+  globalTables: [],
   settings: { exchangeRate: 85.40, displayCurrency: 'USD' },
   activeYearId: null,
   activeYear: null,
@@ -60,6 +62,7 @@ const initialState: State = {
 type Action =
   | { type: 'SET_LOADING'; loading: boolean }
   | { type: 'LOAD_DATA'; payload: Partial<State> }
+  | { type: 'SET_GLOBAL_TABLES'; payload: Table[] }
   | { type: 'SET_SETTINGS'; settings: UserSettings }
   | { type: 'SET_YEARS'; years: State['years'] }
   | { type: 'SET_TABS'; yearId: string; tabs: Tab[] }
@@ -87,6 +90,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, loading: action.loading };
     case 'LOAD_DATA':
       return { ...state, ...action.payload, loaded: true, loading: false };
+    case 'SET_GLOBAL_TABLES':
+      return { ...state, globalTables: action.payload };
     case 'SET_SETTINGS':
       return { ...state, settings: action.settings };
     case 'SET_YEARS':
@@ -162,19 +167,26 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+// Helper function to filter out reference/global tables from calculations
+const filterNonReferenceTables = (tabs: Tab[]): Tab[] => {
+  return tabs.map(tab => ({
+    ...tab,
+    tables: tab.tables.filter(table => !table.is_reference && !table.is_global)
+  })).filter(tab => tab.tables.length > 0);
+};
+
 export function useFinanceStore() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  //const lastFetchRef = useRef<number>(0);
 
   const loadData = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', loading: true });
     try {
-      const [years, settings] = await Promise.all([
+      const [years, settings, globalTables] = await Promise.all([
         financeService.fetchYears(),
         financeService.fetchSettings(),
+        financeService.fetchGlobalTables(),
       ]);
 
-      // Fetch all tabs in parallel
       const tabsPromises = years.map(year => financeService.fetchFullYearData(year.id));
       const tabsResults = await Promise.all(tabsPromises);
       
@@ -192,7 +204,12 @@ export function useFinanceStore() {
         });
       });
       
-      // Fetch all rows in ONE parallel batch
+      // IMPORTANT: Also add global table IDs to fetch their rows
+      globalTables.forEach(table => {
+        allTableIds.push(table.id);
+      });
+      
+      // Fetch rows for ALL tables (regular AND global)
       const rowsPromises = allTableIds.map(id => financeService.fetchRows(id));
       const allRowsResults = await Promise.all(rowsPromises);
       
@@ -216,6 +233,8 @@ export function useFinanceStore() {
           expandedYears: activeYear ? { [activeYear.id]: true } : {},
         },
       });
+      
+      dispatch({ type: 'SET_GLOBAL_TABLES', payload: globalTables });
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Failed to load data');
@@ -226,19 +245,6 @@ export function useFinanceStore() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // // Throttled window focus refetch
-  // useEffect(() => {
-  //   const handleFocus = () => {
-  //     const now = Date.now();
-  //     if (now - lastFetchRef.current > 30000) {
-  //       lastFetchRef.current = now;
-  //       loadData();
-  //     }
-  //   };
-  //   window.addEventListener('focus', handleFocus);
-  //   return () => window.removeEventListener('focus', handleFocus);
-  // }, [loadData]);
 
   const updateRate = useCallback(async (rate: number) => {
     dispatch({ type: 'SET_RATE', rate });
@@ -292,9 +298,9 @@ export function useFinanceStore() {
     }
   }, [state.tabsByYear]);
 
-  const createTable = useCallback(async (tabId: string, name: string, type: string, fields: any[]) => {
+  const createTable = useCallback(async (tabId: string, name: string, type: string, fields: any[], isReference: boolean = false) => {
     try {
-      const newTable = await financeService.createTable(tabId, name, type);
+      const newTable = await financeService.createTable(tabId, name, type, isReference);
       await financeService.saveFields(newTable.id, fields);
       
       const yearId = state.years.find(y => 
@@ -314,6 +320,23 @@ export function useFinanceStore() {
       throw error;
     }
   }, [state.years, state.tabsByYear]);
+
+  const createGlobalTable = useCallback(async (name: string, fields: any[]) => {
+    try {
+      const newTable = await financeService.createGlobalTable(name, fields);
+      // Also fetch rows for this new global table (empty initially)
+      const rows = await financeService.fetchRows(newTable.id);
+      dispatch({ type: 'SET_ROWS', tableId: newTable.id, rows });
+      const updatedGlobalTables = await financeService.fetchGlobalTables();
+      dispatch({ type: 'SET_GLOBAL_TABLES', payload: updatedGlobalTables });
+      toast.success(`Global table "${name}" created`);
+      return newTable;
+    } catch (error) {
+      console.error('Failed to create global table:', error);
+      toast.error('Failed to create global table');
+      throw error;
+    }
+  }, []);
 
   const updateTable = useCallback(async (tabId: string, tableId: string, name: string, type: string, fields: any[]) => {
     await financeService.updateTable(tableId, { name, type });
@@ -406,17 +429,20 @@ export function useFinanceStore() {
     toast.success('Tab deleted');
   }, [state.years, state.tabsByYear, state.activeTabId]);
 
+  // Filter out reference/global tables from calculations
   const overallRows = useMemo(() => {
     if (!state.activeYearId) return [];
     const tabs = state.tabsByYear[state.activeYearId] || [];
-    return FE.aggregateOverall(tabs, state.rowsByTable, state.settings.exchangeRate, state.activeYear || 0);
+    const filteredTabs = filterNonReferenceTables(tabs);
+    return FE.aggregateOverall(filteredTabs, state.rowsByTable, state.settings.exchangeRate, state.activeYear || 0);
   }, [state.activeYearId, state.tabsByYear, state.rowsByTable, state.settings.exchangeRate, state.activeYear]);
 
   const allYearsRows = useMemo(() => {
     const out: Record<string, OverallRow[]> = {};
     for (const year of state.years) {
       const tabs = state.tabsByYear[year.id] || [];
-      out[year.year] = FE.aggregateOverall(tabs, state.rowsByTable, state.settings.exchangeRate, year.year);
+      const filteredTabs = filterNonReferenceTables(tabs);
+      out[year.year] = FE.aggregateOverall(filteredTabs, state.rowsByTable, state.settings.exchangeRate, year.year);
     }
     return out;
   }, [state.years, state.tabsByYear, state.rowsByTable, state.settings.exchangeRate]);
@@ -430,6 +456,7 @@ export function useFinanceStore() {
     createYear,
     createTab,
     createTable,
+    createGlobalTable,
     updateTable,
     addRow,
     updateRow,

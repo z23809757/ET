@@ -2,13 +2,16 @@ import React from 'react';
 import { S, TYPE_C, TYPE_ICON } from '../../lib/constants';
 import { Icon } from './Icon';
 import { useAuth } from '../../hooks/useAuth';
+import { Table } from '../../types/finance';
 
 interface SidebarProps {
   years: Array<{ id: string; year: number }>;
   tabsByYear: Record<string, any[]>;
   rowsByTable: Record<string, any[]>;
+  globalTables?: Table[];
   activeYearId: string | null;
   activeTabId: string | null;
+  activeTableId: string | null;
   activeView: string;
   expandedYears: Record<string, boolean>;
   isOpen: boolean;
@@ -16,6 +19,7 @@ interface SidebarProps {
   onToggleYear: (yearId: string) => void;
   onAddYear: () => void;
   onAddTab: (yearId: string) => void;
+  onAddGlobalTable: () => void;
   onDeleteTab: (tabId: string, name: string, count: number) => void;
   onDeleteTable: (tabId: string, tableId: string, name: string, count: number) => void;
   onClose: () => void;
@@ -25,8 +29,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   years,
   tabsByYear,
   rowsByTable,
+  globalTables = [],
   activeYearId,
   activeTabId,
+  activeTableId,
   activeView,
   expandedYears,
   isOpen,
@@ -34,6 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleYear,
   onAddYear,
   onAddTab,
+  onAddGlobalTable,
   onDeleteTab,
   onDeleteTable,
   onClose,
@@ -150,7 +157,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {(tabsByYear[year.id] || []).map(tab => (
                   <div key={tab.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 8 }}>
                     <div
-                      style={{ ...S.sbSub(activeTabId === tab.id && activeView !== "overall" && activeYearId === year.id), flex: 1 }}
+                      style={{ ...S.sbSub(activeTabId === tab.id && activeView !== "overall" && activeYearId === year.id && activeView !== "table"), flex: 1 }}
                       onClick={() => onNavigate("tab", year.id, tab.id)}
                     >
                       <Icon n={tab.icon || "ti-folder"} size={13} color={activeTabId === tab.id ? "#185FA5" : "var(--color-text-tertiary)"} />
@@ -180,13 +187,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
         ))}
+
+        {/* Global Reference Tables Section */}
+        {globalTables.length > 0 && (
+          <div style={{ marginTop: 16, borderTop: '0.5px solid var(--color-border-tertiary)', paddingTop: 12 }}>
+            <div style={{ ...S.secLabel, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon n="ti-database" size={12} />
+              GLOBAL REFERENCE
+            </div>
+            {globalTables.map(table => (
+              <div
+                key={table.id}
+                onClick={() => onNavigate('table', null, null, table.id)}
+                style={{
+                  ...S.sbSub(activeTableId === table.id && activeView === 'table'),
+                  marginLeft: 8,
+                  opacity: 0.8,
+                  borderLeft: '2px solid #185FA5'
+                }}
+              >
+                <Icon n="ti-database" size={13} color="#185FA5" />
+                {table.name}
+                <span style={{ fontSize: 9, marginLeft: 'auto', color: '#185FA5', background: '#E6F1FB', padding: '1px 6px', borderRadius: 10 }}>
+                  Global
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div
-        onClick={onAddYear}
-        style={{ display: "flex", alignItems: "center", gap: 6, margin: "8px 12px 10px", padding: "6px 10px", border: "0.5px dashed var(--color-border-secondary)", borderRadius: 8, fontSize: 11, color: "var(--color-text-tertiary)", cursor: "pointer" }}
-      >
-        <Icon n="ti-plus" size={12} />Add new year
+      {/* Bottom Buttons - Split */}
+      <div>
+        {/* Add Year Button */}
+        <div
+          onClick={onAddYear}
+          style={{ display: "flex", alignItems: "center", gap: 6, margin: "8px 12px 4px", padding: "6px 10px", border: "0.5px dashed var(--color-border-secondary)", borderRadius: 8, fontSize: 11, color: "var(--color-text-tertiary)", cursor: "pointer" }}
+        >
+          <Icon n="ti-plus" size={12} />Add new year
+        </div>
+
+        {/* Add Global Reference Table Button */}
+        <div
+          onClick={onAddGlobalTable}
+          style={{ display: "flex", alignItems: "center", gap: 6, margin: "0px 12px 10px", padding: "6px 10px", border: "0.5px dashed #185FA5", borderRadius: 8, fontSize: 11, color: "#185FA5", cursor: "pointer", background: "rgba(24, 95, 165, 0.05)" }}
+        >
+          <Icon n="ti-database" size={12} />Add Reference Table
+        </div>
       </div>
     </div>
   );

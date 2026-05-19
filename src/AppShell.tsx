@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Sidebar } from './components/shared/Sidebar';
-import { Topbar } from './components/shared/Topbar';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { OverallView } from './components/overall/OverallView';
 import { TableView } from './components/table/TableView';
 import { EmptyState } from './components/shared/EmptyState';
 import { AllYearsOverview } from './components/allyears/AllYearsOverview';
-import { AddYearModal, AddTabModal, TableModal, DeleteConfirmModal } from './components/modals';
+import { AddYearModal, AddTabModal, DeleteConfirmModal } from './components/modals';
+import { TableModal } from './components/modals/TableModal';
 import { useFinanceStore } from './hooks/useFinanceStore';
 import { S, TYPE_C, TYPE_ICON } from './lib/constants';
 import { Icon } from './components/shared/Icon';
@@ -19,6 +19,8 @@ import * as XLSX from 'xlsx';
 
 export const AppShell: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showGlobalTableModal, setShowGlobalTableModal] = useState(false);
+  const [showRegularTableModal, setShowRegularTableModal] = useState(false);
   
   const {
     state,
@@ -28,6 +30,7 @@ export const AppShell: React.FC = () => {
     createYear,
     createTab,
     createTable,
+    createGlobalTable,
     updateTable,
     addRow,
     updateRow,
@@ -55,11 +58,32 @@ export const AppShell: React.FC = () => {
     deleteTarget,
     loading,
     loaded,
+    globalTables,
   } = state;
 
   const currentTabs = activeYearId ? tabsByYear[activeYearId] || [] : [];
   const currentTab = currentTabs.find(t => t.id === activeTabId);
-  const currentTable = currentTab?.tables?.find(t => t.id === activeTableId);
+  
+  // Find current table - check both regular tables and global tables
+  let currentTable = null;
+  if (activeTableId) {
+    // First check regular tables
+    for (const yearId in tabsByYear) {
+      for (const tab of tabsByYear[yearId]) {
+        const found = tab.tables.find(t => t.id === activeTableId);
+        if (found) {
+          currentTable = found;
+          break;
+        }
+      }
+      if (currentTable) break;
+    }
+    // If not found, check global tables
+    if (!currentTable) {
+      currentTable = globalTables.find(t => t.id === activeTableId);
+    }
+  }
+  
   const currentRows = activeTableId ? rowsByTable[activeTableId] || [] : [];
 
   const overallRowsData = overallRows;
@@ -113,14 +137,18 @@ export const AppShell: React.FC = () => {
         years={years}
         tabsByYear={tabsByYear}
         rowsByTable={rowsByTable}
+        globalTables={globalTables}
         activeYearId={activeYearId}
         activeTabId={activeTabId}
+        activeTableId={activeTableId}
         activeView={activeView}
         expandedYears={expandedYears}
         isOpen={sidebarOpen}
         onNavigate={(view, yearId, tabId, tableId) => {
           const year = years.find(y => y.id === yearId);
-          dispatch({ type: 'SET_ACTIVE_YEAR', yearId: yearId || '', year: year?.year || 0 });
+          if (yearId) {
+            dispatch({ type: 'SET_ACTIVE_YEAR', yearId, year: year?.year || 0 });
+          }
           dispatch({ type: 'SET_ACTIVE_TAB', tabId: tabId || null });
           dispatch({ type: 'SET_ACTIVE_TABLE', tableId: tableId || null });
           dispatch({ type: 'SET_ACTIVE_VIEW', view });
@@ -128,6 +156,7 @@ export const AppShell: React.FC = () => {
         onToggleYear={(yearId) => dispatch({ type: 'TOGGLE_YEAR_EXPANDED', yearId })}
         onAddYear={() => dispatch({ type: 'SET_MODAL', modal: { kind: 'addYear' } })}
         onAddTab={(yearId) => dispatch({ type: 'SET_MODAL', modal: { kind: 'addTab', yearId } })}
+        onAddGlobalTable={() => setShowGlobalTableModal(true)}
         onDeleteTab={(tabId, name, count) => dispatch({ type: 'SET_DELETE_TARGET', target: { type: 'tab', tabId, name, count } })}
         onDeleteTable={(tabId, tableId, name, count) => dispatch({ type: 'SET_DELETE_TARGET', target: { type: 'table', tabId, tableId, name, count } })}
         onClose={() => setSidebarOpen(false)}
@@ -173,7 +202,7 @@ export const AppShell: React.FC = () => {
               <><Icon n={currentTab.icon || 'ti-folder'} size={15} color="var(--color-text-tertiary)" />{currentTab.name} — {activeYear}</>
             )}
             {activeView === 'table' && currentTable && (
-              <><Icon n="ti-table" size={15} color="var(--color-text-tertiary)" />{currentTable.name}</>
+              <><Icon n={currentTable.is_global ? "ti-database" : "ti-table"} size={15} color="var(--color-text-tertiary)" />{currentTable.name} {currentTable.is_global && <span style={{ fontSize: 11, marginLeft: 6, color: '#185FA5' }}>(Global)</span>}</>
             )}
           </div>
           <div style={S.topRight}>
@@ -189,7 +218,7 @@ export const AppShell: React.FC = () => {
                   <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>
                 )}
                 {activeView === 'tab' && currentTab && (
-                  <Button variant="blue" small onClick={() => dispatch({ type: 'SET_MODAL', modal: { kind: 'addTable', tabId: currentTab.id } })}>
+                  <Button variant="blue" small onClick={() => setShowRegularTableModal(true)}>
                     <Icon n="ti-plus" size={12} />Add table
                   </Button>
                 )}
@@ -207,16 +236,15 @@ export const AppShell: React.FC = () => {
         <div style={{ flex: 1, overflow: "auto" }}>
           {/* Dashboard - Shows All Years by default */}
           {activeView === 'dashboard' && (
-             <DashboardView
-    overallRows={overallRowsData}
-    allYearsRows={allYearsRowsData}
-    settings={settings}
-    dashFilter={dashFilter}
-    onFilterChange={(patch) => dispatch({ type: 'SET_DASH_FILTER', patch })}
-    onCurrencyChange={(cur) => updateDisplayCurrency(cur)}
-    activeYear={activeYear}
-    //selectedYearFromSidebar={activeYear}  // ADD THIS PROP
-  />
+            <DashboardView
+              overallRows={overallRowsData}
+              allYearsRows={allYearsRowsData}
+              settings={settings}
+              dashFilter={dashFilter}
+              onFilterChange={(patch) => dispatch({ type: 'SET_DASH_FILTER', patch })}
+              onCurrencyChange={(cur) => updateDisplayCurrency(cur)}
+              activeYear={activeYear}
+            />
           )}
 
           {/* All Years Overview */}
@@ -247,7 +275,7 @@ export const AppShell: React.FC = () => {
                   heading="No tables yet"
                   sub="Create your first table to start tracking data in this tab"
                   actions={[
-                    <Button key="a" variant="blue" onClick={() => dispatch({ type: 'SET_MODAL', modal: { kind: 'addTable', tabId: currentTab.id } })}>
+                    <Button key="a" variant="blue" onClick={() => setShowRegularTableModal(true)}>
                       <Icon n="ti-plus" size={13} />Create first table
                     </Button>
                   ]}
@@ -286,7 +314,7 @@ export const AppShell: React.FC = () => {
                       </div>
                     );
                   })}
-                  <div style={S.addCard} onClick={() => dispatch({ type: 'SET_MODAL', modal: { kind: 'addTable', tabId: currentTab.id } })}>
+                  <div style={S.addCard} onClick={() => setShowRegularTableModal(true)}>
                     <Icon n="ti-plus" size={22} color="var(--color-text-tertiary)" />
                     <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>Add new table</div>
                   </div>
@@ -295,7 +323,7 @@ export const AppShell: React.FC = () => {
             </div>
           )}
 
-          {/* Table View */}
+          {/* Table View - For both regular AND global tables */}
           {activeView === 'table' && currentTable && (
             <TableView
               table={currentTable}
@@ -321,6 +349,21 @@ export const AppShell: React.FC = () => {
         />
       )}
 
+      {showRegularTableModal && (
+        <TableModal
+          onClose={() => setShowRegularTableModal(false)}
+          onSave={async (data) => {
+            if (activeTabId) {
+              await createTable(activeTabId, data.name, data.type, data.fields, false);
+              setShowRegularTableModal(false);
+              toast.success(`Table "${data.name}" created`);
+            } else {
+              toast.error('Please select a tab first');
+            }
+          }}
+        />
+      )}
+
       {modal?.kind === 'addTab' && (
         <AddTabModal
           onSave={async (name, icon) => {
@@ -333,11 +376,11 @@ export const AppShell: React.FC = () => {
 
       {modal?.kind === 'addTable' && currentTab && (
         <TableModal
+          onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
           onSave={async (data) => {
-            await createTable(modal.tabId, data.name, data.type, data.fields);
+            await createTable(modal.tabId, data.name, data.type, data.fields, false);
             dispatch({ type: 'SET_MODAL', modal: null });
           }}
-          onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
         />
       )}
 
@@ -377,6 +420,18 @@ export const AppShell: React.FC = () => {
             dispatch({ type: 'SET_DELETE_TARGET', target: null });
           }}
           onClose={() => dispatch({ type: 'SET_DELETE_TARGET', target: null })}
+        />
+      )}
+
+      {/* Global Table Modal */}
+      {showGlobalTableModal && (
+        <TableModal
+          isGlobal={true}
+          onClose={() => setShowGlobalTableModal(false)}
+          onSave={async (data) => {
+            await createGlobalTable(data.name, data.fields);
+            setShowGlobalTableModal(false);
+          }}
         />
       )}
     </div>

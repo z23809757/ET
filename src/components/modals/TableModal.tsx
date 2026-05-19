@@ -8,16 +8,18 @@ import { Field } from '../../types/finance';
 interface TableModalProps {
   initial?: any;
   hasRows?: boolean;
-  onSave: (data: { name: string; type: string; fields: Field[] }) => void;
+  isGlobal?: boolean;
+  onSave: (data: { name: string; type: string; fields: Field[]; is_reference?: boolean; is_global?: boolean }) => void;
   onClose: () => void;
 }
 
 const uid = () => Math.random().toString(36).substring(2, 9);
 
-export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false, onSave, onClose }) => {
+export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false, isGlobal = false, onSave, onClose }) => {
   const [name, setName] = useState(initial?.name || '');
   const [fields, setFields] = useState<Field[]>(initial?.fields || [{ id: uid(), name: '', type: 'Text', currency: 'None', isPrimary: false, dropdownOptions: [] }]);
   const [ttype, setTtype] = useState(initial?.type || 'Expense');
+  const [isReference, setIsReference] = useState(initial?.is_reference || isGlobal);
 
   const valid = name.trim() && fields.length > 0 && fields.every(f => f.name.trim());
 
@@ -56,16 +58,40 @@ export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false
   };
 
   return (
-    <Modal title={initial ? 'Edit table' : 'Create new table'} icon={initial ? 'ti-table-options' : 'ti-table-plus'} onClose={onClose} width={650}>
+    <Modal title={initial ? 'Edit table' : (isGlobal ? 'Create Global Reference Table' : 'Create new table')} icon={initial ? 'ti-table-options' : 'ti-table-plus'} onClose={onClose} width={650}>
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Table name</div>
         <input
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="e.g. House Rent"
+          placeholder={isGlobal ? "e.g., Exchange Rates, Tax Brackets, Product Catalog" : "e.g., House Rent"}
           style={{ width: '100%', padding: '6px 9px', fontSize: 12, border: '0.5px solid var(--color-border-secondary)', borderRadius: 8, background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', outline: 'none' }}
         />
       </div>
+
+      {/* Global Reference Table Info */}
+      {isGlobal && (
+        <div style={{ 
+          marginBottom: 16, 
+          padding: "10px 12px", 
+          background: "#E6F1FB", 
+          borderRadius: 8, 
+          fontSize: 11, 
+          color: "#185FA5",
+          border: '0.5px solid #B8D4F0'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <Icon n="ti-database" size={14} />
+            <strong>Global Reference Table</strong>
+          </div>
+          <div style={{ marginLeft: 20 }}>
+            ✓ Exists outside any year or tab<br />
+            ✓ Available in ALL years for formula references<br />
+            ✓ NOT included in financial calculations (Dashboard, Overall, All Years)<br />
+            ✓ Perfect for exchange rates, tax brackets, lookup data
+          </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Fields</div>
@@ -173,44 +199,53 @@ export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false
 
       <div style={{ height: '0.5px', background: 'var(--color-border-tertiary)', margin: '12px 0' }} />
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Table type</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-          {['Expense', 'Income', 'Transfer', 'Loan', 'None'].map(t => {
-            const c = TYPE_C[t as keyof typeof TYPE_C];
-            const active = ttype === t;
-            return (
-              <div
-                key={t}
-                onClick={() => setTtype(t)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '5px 12px',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  border: `0.5px solid ${active ? c.border : 'var(--color-border-secondary)'}`,
-                  background: active ? c.bg : 'var(--color-background-secondary)',
-                  color: active ? c.text : 'var(--color-text-secondary)',
-                  cursor: 'pointer',
-                  fontWeight: active ? 500 : 400,
-                }}
-              >
-                <Icon n={TYPE_ICON[t as keyof typeof TYPE_ICON]} size={12} />{t}
-              </div>
-            );
-          })}
+      {/* Table type - only show for non-reference/global tables */}
+      {!isGlobal && !isReference && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Table type</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+            {['Expense', 'Income', 'Transfer', 'Loan', 'None'].map(t => {
+              const c = TYPE_C[t as keyof typeof TYPE_C];
+              const active = ttype === t;
+              return (
+                <div
+                  key={t}
+                  onClick={() => setTtype(t)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '5px 12px',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    border: `0.5px solid ${active ? c.border : 'var(--color-border-secondary)'}`,
+                    background: active ? c.bg : 'var(--color-background-secondary)',
+                    color: active ? c.text : 'var(--color-text-secondary)',
+                    cursor: 'pointer',
+                    fontWeight: active ? 500 : 400,
+                  }}
+                >
+                  <Icon n={TYPE_ICON[t as keyof typeof TYPE_ICON]} size={12} />{t}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Icon n="ti-info-circle" size={12} />Expense, Income, Transfer, Loan flow into Overall. None = private.
+          </div>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Icon n="ti-info-circle" size={12} />Expense, Income, Transfer, Loan flow into Overall. None = private.
-        </div>
-      </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, paddingTop: 14, borderTop: '0.5px solid var(--color-border-tertiary)' }}>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="blue" disabled={!valid} onClick={() => onSave({ name: name.trim(), type: ttype, fields })}>
-          <Icon n="ti-check" size={13} />{initial ? 'Save changes' : 'Create table'}
+        <Button variant="blue" disabled={!valid} onClick={() => onSave({ 
+          name: name.trim(), 
+          type: ttype, 
+          fields, 
+          is_reference: isGlobal || isReference,
+          is_global: isGlobal
+        })}>
+          <Icon n="ti-check" size={13} />{initial ? 'Save changes' : (isGlobal ? 'Create Global Table' : 'Create Table')}
         </Button>
       </div>
     </Modal>
