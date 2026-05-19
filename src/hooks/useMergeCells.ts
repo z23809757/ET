@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { mergeService, MergedCell } from '../services/mergeService';
 
+interface RowLike { id: string; }
+interface FieldLike { id: string; }
+
 export function useMergeCells(tableId: string) {
   const [merges, setMerges] = useState<MergedCell[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,7 +15,6 @@ export function useMergeCells(tableId: string) {
     endColId: string;
   } | null>(null);
 
-  // Load merges from database
   useEffect(() => {
     const loadMerges = async () => {
       setLoading(true);
@@ -23,34 +25,51 @@ export function useMergeCells(tableId: string) {
     loadMerges();
   }, [tableId]);
 
-  // Check if a cell is merged (and returns the master cell if it is)
   const isCellMerged = useCallback((rowId: string, colId: string): MergedCell | null => {
-    return merges.find(m => 
+    return merges.find(m =>
       m.start_row_id === rowId && m.start_col_id === colId
     ) || null;
   }, [merges]);
 
-  // Check if a cell is hidden (part of a merged range but not the master)
-  const isCellHidden = useCallback((rowId: string, colId: string): boolean => {
+  // FIXED: Properly detects cells that should be hidden (non-master cells in a merged range)
+  const isCellHidden = useCallback((
+    rowId: string,
+    colId: string,
+    rows: RowLike[],
+    fields: FieldLike[]
+  ): boolean => {
+    const rowIds = rows.map(r => r.id);
+    const fieldIds = fields.map(f => f.id);
+    const currentRowIdx = rowIds.indexOf(rowId);
+    const currentColIdx = fieldIds.indexOf(colId);
+
+    if (currentRowIdx === -1 || currentColIdx === -1) return false;
+
     return merges.some(m => {
-      // Get row indices (simplified - assuming rows are in order)
-      const isInRowRange = rowId >= m.start_row_id && rowId <= m.end_row_id;
-      const isInColRange = colId >= m.start_col_id && colId <= m.end_col_id;
-      const isNotMaster = !(rowId === m.start_row_id && colId === m.start_col_id);
-      return isInRowRange && isInColRange && isNotMaster;
+      const startRowIdx = rowIds.indexOf(m.start_row_id);
+      const endRowIdx = rowIds.indexOf(m.end_row_id);
+      const startColIdx = fieldIds.indexOf(m.start_col_id);
+      const endColIdx = fieldIds.indexOf(m.end_col_id);
+
+      if (startRowIdx === -1 || endRowIdx === -1 || startColIdx === -1 || endColIdx === -1) return false;
+
+      const isInRowRange = currentRowIdx >= startRowIdx && currentRowIdx <= endRowIdx;
+      const isInColRange = currentColIdx >= startColIdx && currentColIdx <= endColIdx;
+      const isMasterCell = currentRowIdx === startRowIdx && currentColIdx === startColIdx;
+
+      // Hide if within range but NOT the master cell
+      return isInRowRange && isInColRange && !isMasterCell;
     });
   }, [merges]);
 
-  // Get the master cell for a hidden cell
-  const getMasterCell = useCallback((rowId: string, colId: string): MergedCell | null => {
-    return merges.find(m => {
-      const isInRowRange = rowId >= m.start_row_id && rowId <= m.end_row_id;
-      const isInColRange = colId >= m.start_col_id && colId <= m.end_col_id;
-      return isInRowRange && isInColRange;
-    }) || null;
-  }, [merges]);
+  const isRowHiddenByMerge = useCallback((
+    rowId: string,
+    rows: RowLike[],
+    fields: FieldLike[]
+  ): boolean => {
+    return fields.some(f => isCellHidden(rowId, f.id, rows, fields));
+  }, [isCellHidden]);
 
-  // Merge selected cells
   const mergeCells = useCallback(async (
     startRowId: string,
     endRowId: string,
@@ -59,22 +78,31 @@ export function useMergeCells(tableId: string) {
     mergedValue: string
   ) => {
     await mergeService.saveMerge(tableId, startRowId, endRowId, startColId, endColId, mergedValue);
-    // Reload merges
     const mergesData = await mergeService.getMergesForTable(tableId);
     setMerges(mergesData);
   }, [tableId]);
 
-  // Unmerge cells
   const unmergeCells = useCallback(async (mergeId: string) => {
     await mergeService.deleteMerge(mergeId);
     const mergesData = await mergeService.getMergesForTable(tableId);
     setMerges(mergesData);
   }, [tableId]);
 
-  // Clear all merges for table
   const clearAllMerges = useCallback(async () => {
     await mergeService.deleteAllMergesForTable(tableId);
     setMerges([]);
+  }, [tableId]);
+
+  const updateMergedValue = useCallback(async (mergeId: string, newValue: string) => {
+    await mergeService.updateMergedValue(mergeId, newValue);
+    const mergesData = await mergeService.getMergesForTable(tableId);
+    setMerges(mergesData);
+  }, [tableId]);
+
+  const updateMergedValueByCell = useCallback(async (rowId: string, colId: string, newValue: string) => {
+    await mergeService.updateMergedValueByCell(tableId, rowId, colId, newValue);
+    const mergesData = await mergeService.getMergesForTable(tableId);
+    setMerges(mergesData);
   }, [tableId]);
 
   return {
@@ -86,9 +114,11 @@ export function useMergeCells(tableId: string) {
     setSelectedRange,
     isCellMerged,
     isCellHidden,
-    getMasterCell,
+    isRowHiddenByMerge,
     mergeCells,
     unmergeCells,
-    clearAllMerges
+    clearAllMerges,
+    updateMergedValue,
+    updateMergedValueByCell,
   };
 }

@@ -79,5 +79,42 @@ export const mergeService = {
       console.error('Error deleting merges:', error);
       throw error;
     }
+  },
+
+  // Update merged value for a specific merge by ID
+  async updateMergedValue(mergeId: string, newValue: string): Promise<void> {
+    const { error } = await supabase
+      .from('merged_cells')
+      .update({ merged_value: newValue })
+      .eq('id', mergeId);
+    
+    if (error) {
+      console.error('Error updating merged value:', error);
+      throw error;
+    }
+  },
+
+  // Update merged value by cell coordinates (master cell)
+  async updateMergedValueByCell(tableId: string, rowId: string, colId: string, newValue: string): Promise<void> {
+    const { data, error: fetchError } = await supabase
+      .from('merged_cells')
+      .select('id')
+      .eq('table_id', tableId)
+      .eq('start_row_id', rowId)
+      .eq('start_col_id', colId)
+      .single();
+    
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        // No merge found - this isn't a merged cell
+        return;
+      }
+      console.error('Error finding merge:', fetchError);
+      throw fetchError;
+    }
+    
+    if (data) {
+      await this.updateMergedValue(data.id, newValue);
+    }
   }
 };

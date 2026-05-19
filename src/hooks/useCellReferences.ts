@@ -16,8 +16,7 @@ export function useCellReferences() {
           const rows = state.rowsByTable[table.id] || [];
           
           for (const field of table.fields) {
-            if (field.type === 'Formula') continue;
-            
+            // Include all fields including Formula fields
             for (let i = 0; i < rows.length; i++) {
               const row = rows[i];
               const monthField = table.fields.find((f: any) => f.type === 'Month' || f.type === 'Date');
