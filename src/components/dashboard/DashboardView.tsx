@@ -179,7 +179,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="text-accent-gold text-2xl ml-2">⚓</span>
             </h1>
             <p className="text-white/40 text-sm mt-1">
-              {showAllYears ? "Charting all voyages" : `Logbook • Year ${displayYear}`}
+              {showAllYears ? "Charting all Years" : `Logbook • Year ${displayYear}`}
             </p>
           </div>
         </div>
@@ -311,7 +311,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   }`}
                 >
                   <Anchor size={14} className="inline mr-1.5" />
-                  All Voyages ({yearCount})
+                  All Years ({yearCount})
                 </button>
               </div>
             </div>

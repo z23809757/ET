@@ -7,7 +7,7 @@ import { SignupPage } from './components/auth/SignupPage';
 import { AppShell } from './AppShell';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { LoadingSkeleton } from './components/shared/LoadingSkeleton';
-import './styles/global.css';
+//import './styles/global.css';
 
 function App() {
   const { user, loading } = useAuth();
