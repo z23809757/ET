@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { S } from '../../lib/constants';
+import { motion, AnimatePresence } from 'framer-motion';
+import { TrendingUp, TrendingDown, Wallet, CreditCard, Calendar, X, Sparkles, Compass, Anchor } from 'lucide-react';
 import { FE } from '../../lib/financeEngine';
 import { Icon } from '../shared/Icon';
 import { MiniBar } from '../charts/MiniBar';
@@ -7,6 +8,10 @@ import { MiniDonut } from '../charts/MiniDonut';
 import { OverallRow, UserSettings } from '../../types/finance';
 import { TYPE_C, TYPE_ICON } from '../../lib/constants';
 import { formatUSD, formatINR } from '../../lib/formatters';
+import { GlassPanel } from '../ui/GlassPanel';
+import { PageTransition } from '../ui/PageTransition';
+import { RecentTransactions } from './RecentTransactions';
+import { COLORS, GRADIENTS } from '../../lib/theme';
 
 interface DashboardViewProps {
   overallRows: OverallRow[];
@@ -16,7 +21,7 @@ interface DashboardViewProps {
   onFilterChange: (patch: any) => void;
   onCurrencyChange: (cur: 'USD' | 'INR') => void;
   activeYear?: number | null;
-  selectedYearFromSidebar?: number | null;  // NEW PROP
+  selectedYearFromSidebar?: number | null;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -29,27 +34,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   activeYear,
   selectedYearFromSidebar,
 }) => {
-  // Track if we're showing all years or a specific year
   const [showAllYears, setShowAllYears] = useState(true);
-  // Track the currently selected year (from sidebar)
   const [currentSelectedYear, setCurrentSelectedYear] = useState<number | null>(null);
 
   // Listen to sidebar year selection
   useEffect(() => {
     if (selectedYearFromSidebar) {
       setCurrentSelectedYear(selectedYearFromSidebar);
-      setShowAllYears(false);  // Auto switch to year view when sidebar year is clicked
+      setShowAllYears(false);
     }
   }, [selectedYearFromSidebar]);
 
-  // When user manually clicks "All Years" button
   const handleAllYearsClick = () => {
+    console.log('All Years clicked'); // Debug log
     setShowAllYears(true);
     setCurrentSelectedYear(null);
   };
 
-  // When user manually clicks year button
   const handleYearClick = () => {
+    console.log('Year clicked:', activeYear); // Debug log
     if (activeYear) {
       setCurrentSelectedYear(activeYear);
       setShowAllYears(false);
@@ -61,10 +64,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (showAllYears && allYearsRows) {
       const combined: OverallRow[] = [];
       for (const year in allYearsRows) {
-        combined.push(...allYearsRows[year]);
+        if (allYearsRows[year] && Array.isArray(allYearsRows[year])) {
+          combined.push(...allYearsRows[year]);
+        }
       }
+      console.log('Combined rows for All Years:', combined.length); // Debug log
       return combined;
     }
+    console.log('Rows for current year:', overallRows.length); // Debug log
     return overallRows;
   }, [showAllYears, overallRows, allYearsRows]);
 
@@ -81,213 +88,292 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return FE.filterByDate(displayRows, dashFilter.from, dashFilter.to);
   }, [displayRows, dashFilter.from, dashFilter.to]);
 
-  const metrics = useMemo(() => FE.dashboardMetrics(filtered, settings.displayCurrency, settings.exchangeRate), [filtered, settings.displayCurrency, settings.exchangeRate]);
+  const metrics = useMemo(() => {
+    const result = FE.dashboardMetrics(filtered, settings.displayCurrency, settings.exchangeRate);
+    console.log('Metrics computed:', result); // Debug log
+    return result;
+  }, [filtered, settings.displayCurrency, settings.exchangeRate]);
+  
   const charts = useMemo(() => FE.chartData(filtered), [filtered]);
   const recent = filtered.slice(0, 10);
 
-  const fmt = (n: number) => settings.displayCurrency === 'INR' ? formatINR(n * settings.exchangeRate) : formatUSD(n);
+  const fmt = (n: number) => {
+    // Handle NaN, undefined, null
+    let safeValue = 0;
+    if (typeof n === 'number' && !isNaN(n)) {
+      safeValue = n;
+    } else if (typeof n === 'string') {
+      safeValue = parseFloat(n) || 0;
+    }
+    
+    const safeRate = (settings.exchangeRate && !isNaN(settings.exchangeRate)) ? settings.exchangeRate : 85.4;
+    
+    if (settings.displayCurrency === 'INR') {
+      return formatINR(safeValue * safeRate);
+    }
+    return formatUSD(safeValue);
+  };
 
   const handleClearFilters = () => {
     onFilterChange({ from: '', to: '', quick: 'all' });
   };
 
-  // Determine which year to display in the button
   const displayYear = currentSelectedYear || activeYear;
 
+  // Grand Line inspired metric configs
+  const metricConfigs = [
+    {
+      label: "Total Income",
+      value: typeof metrics.income === 'string' ? parseFloat(metrics.income.replace(/[^0-9.-]/g, '')) || 0 : metrics.income,
+      icon: TrendingUp,
+      accent: COLORS.accent.emerald,
+      gradient: GRADIENTS.emeraldCyan,
+      glow: COLORS.accent.emeraldGlow,
+      treasure: false,
+      trend: "up" as const,
+    },
+    {
+      label: "Total Expenses",
+      value: typeof metrics.expense === 'string' ? parseFloat(metrics.expense.replace(/[^0-9.-]/g, '')) || 0 : metrics.expense,
+      icon: TrendingDown,
+      accent: COLORS.accent.coral,
+      gradient: GRADIENTS.coralRose,
+      glow: COLORS.accent.coralGlow,
+      treasure: false,
+      trend: "down" as const,
+    },
+    {
+      label: "Net Savings",
+      value: typeof metrics.savings === 'string' ? parseFloat(metrics.savings.replace(/[^0-9.-]/g, '')) || 0 : metrics.savings,
+      icon: Wallet,
+      accent: COLORS.accent.cyan,
+      gradient: GRADIENTS.cyanBlue,
+      glow: COLORS.accent.cyanGlow,
+      treasure: false,
+    },
+    {
+      label: "Loan Repaid",
+      value: typeof metrics.loan === 'string' ? parseFloat(metrics.loan.replace(/[^0-9.-]/g, '')) || 0 : metrics.loan,
+      icon: CreditCard,
+      accent: COLORS.accent.gold,
+      gradient: GRADIENTS.goldAmber,
+      glow: COLORS.accent.goldGlow,
+      treasure: true,
+    },
+  ];
+
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      {/* Filter Bar */}
-      <div style={{ padding: "10px 16px", background: "var(--color-background-secondary)", borderBottom: "0.5px solid var(--color-border-tertiary)", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>
-          <Icon n="ti-calendar" size={14} style={{ marginRight: 4 }} />Date Range:
-        </span>
-        
-        <input
-          type="month"
-          value={dashFilter.from}
-          onChange={e => onFilterChange({ from: e.target.value, to: dashFilter.to, quick: 'custom' })}
-          placeholder="From"
-          style={{ 
-            padding: "5px 10px", 
-            border: "0.5px solid var(--color-border-secondary)", 
-            borderRadius: 6, 
-            fontSize: 12, 
-            background: "var(--color-background-primary)",
-            color: "var(--color-text-primary)",
-            outline: "none"
-          }}
-        />
-        
-        <span style={{ color: "var(--color-text-tertiary)" }}>→</span>
-        
-        <input
-          type="month"
-          value={dashFilter.to}
-          onChange={e => onFilterChange({ from: dashFilter.from, to: e.target.value, quick: 'custom' })}
-          placeholder="To"
-          style={{ 
-            padding: "5px 10px", 
-            border: "0.5px solid var(--color-border-secondary)", 
-            borderRadius: 6, 
-            fontSize: 12, 
-            background: "var(--color-background-primary)",
-            color: "var(--color-text-primary)",
-            outline: "none"
-          }}
-        />
-
-        {(dashFilter.from || dashFilter.to) && (
-          <button
-            onClick={handleClearFilters}
-            style={{
-              padding: "4px 10px",
-              borderRadius: 6,
-              fontSize: 11,
-              background: "transparent",
-              border: "0.5px solid var(--color-border-secondary)",
-              cursor: "pointer",
-              color: "#D85A30",
-              display: "flex",
-              alignItems: "center",
-              gap: 4
-            }}
-          >
-            <Icon n="ti-x" size={12} /> Clear
-          </button>
-        )}
-
-        {/* Currency Toggle */}
-        <div style={{ marginLeft: "auto", display: "flex", border: "0.5px solid var(--color-border-secondary)", borderRadius: 6, overflow: "hidden" }}>
-          {["USD", "INR"].map(c => (
-            <div
-              key={c}
-              onClick={() => onCurrencyChange(c as 'USD' | 'INR')}
-              style={{ 
-                padding: "4px 12px", 
-                fontSize: 12, 
-                cursor: "pointer", 
-                fontWeight: settings.displayCurrency === c ? 500 : 400, 
-                background: settings.displayCurrency === c ? "#E6F1FB" : "var(--color-background-primary)", 
-                color: settings.displayCurrency === c ? "#0C447C" : "var(--color-text-secondary)"
-              }}
-            >
-              {c}
+    <PageTransition style="fadeUp">
+      <div className="flex-1 overflow-auto">
+        {/* Cinematic Header */}
+        <div className="relative overflow-hidden mb-4">
+          <div className="absolute inset-0 bg-gradient-to-r from-navy-900 via-navy-800/50 to-transparent" />
+          <div className="relative px-6 py-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Compass size={18} className="text-accent-gold" />
+              <span className="text-2xs tracking-widest text-accent-gold uppercase">Grand Line</span>
+              <Anchor size={14} className="text-accent-cyan ml-1" />
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={S.content}>
-        {/* Metric Cards */}
-        <div style={S.metricsGrid}>
-          {[
-            { label: "Total income", value: metrics.income, sub: "Income from all tables", color: "#27500A" },
-            { label: "Total expenses", value: metrics.expense, sub: "Expenses from all tables", color: "#712B13" },
-            { label: "Net savings", value: metrics.savings, sub: "Income − expenses", color: "#185FA5" },
-            { label: "Loan repaid", value: metrics.loan, sub: "Loan repayments", color: "#633806" },
-          ].map(m => (
-            <div key={m.label} style={S.metricCard}>
-              <div style={{ fontSize: 10, color: "var(--color-text-tertiary)", marginBottom: 4 }}>{m.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 600, color: m.color }}>{m.value}</div>
-              <div style={{ fontSize: 9, color: "var(--color-text-tertiary)", marginTop: 4 }}>{m.sub}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Year Toggle - Below metric cards */}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-          <div style={{ 
-            display: "flex", 
-            background: "var(--color-background-secondary)", 
-            borderRadius: 8, 
-            padding: 3,
-            gap: 2
-          }}>
-            <button
-              onClick={handleYearClick}
-              style={{
-                padding: "5px 14px",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 500,
-                background: !showAllYears ? "#185FA5" : "transparent",
-                color: !showAllYears ? "white" : "var(--color-text-secondary)",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.15s"
-              }}
-            >
-              <Icon n="ti-calendar" size={12} style={{ marginRight: 4 }} />
-              {displayYear ? `Year ${displayYear}` : 'Select Year'}
-            </button>
-            <button
-              onClick={handleAllYearsClick}
-              style={{
-                padding: "5px 14px",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 500,
-                background: showAllYears ? "#1D9E75" : "transparent",
-                color: showAllYears ? "white" : "var(--color-text-secondary)",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.15s"
-              }}
-            >
-              <Icon n="ti-chart-bar" size={12} style={{ marginRight: 4 }} />
-              All Years ({yearCount})
-            </button>
+            <h1 className="text-2xl font-bold text-white/90 tracking-tight">
+              Financial Log
+              <span className="text-accent-gold text-2xl ml-2">⚓</span>
+            </h1>
+            <p className="text-white/40 text-sm mt-1">
+              {showAllYears ? "Charting all voyages" : `Logbook • Year ${displayYear}`}
+            </p>
           </div>
         </div>
 
-        {/* Charts */}
-        <div style={S.chartsGrid}>
-          <div style={S.card}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>
-              {showAllYears ? "Monthly trend (All Years Combined)" : `Monthly trend (${displayYear})`}
+        {/* Filter Bar */}
+        <GlassPanel variant="elevated" className="mx-4 mt-2 mb-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-accent-gold" />
+              <span className="text-sm text-white/40">Navigate by date:</span>
             </div>
-            <MiniBar data={charts.bar} />
-          </div>
-          <div style={S.card}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>
-              {showAllYears ? "Expense breakdown (All Years)" : `Expense breakdown (${displayYear})`}
-            </div>
-            <MiniDonut data={charts.donut} />
-          </div>
-        </div>
+            
+            <input
+              type="month"
+              value={dashFilter.from}
+              onChange={e => onFilterChange({ from: e.target.value, to: dashFilter.to, quick: 'custom' })}
+              className="glass-input text-sm px-3 py-1.5 w-36"
+              placeholder="From"
+            />
+            
+            <span className="text-white/20">→</span>
+            
+            <input
+              type="month"
+              value={dashFilter.to}
+              onChange={e => onFilterChange({ from: dashFilter.from, to: e.target.value, quick: 'custom' })}
+              className="glass-input text-sm px-3 py-1.5 w-36"
+              placeholder="To"
+            />
 
-        {/* Recent Transactions */}
-        <div style={S.card}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 12 }}>
-            Recent transactions {showAllYears ? "(All Years)" : `(${displayYear})`}
-          </div>
-          {recent.length === 0 ? (
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", textAlign: "center", padding: "20px 0" }}>
-              {displayRows.length === 0 ? "No transactions yet. Add data to your tables!" : "No transactions in selected date range"}
+            {(dashFilter.from || dashFilter.to) && (
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white/40 hover:text-accent-gold transition-all"
+              >
+                <X size={12} /> Clear course
+              </button>
+            )}
+
+            <div className="ml-auto flex rounded-lg overflow-hidden border border-white/10">
+              {["USD", "INR"].map(c => (
+                <button
+                  key={c}
+                  onClick={() => onCurrencyChange(c as 'USD' | 'INR')}
+                  className={`px-4 py-1.5 text-sm transition-all duration-300 ${
+                    settings.displayCurrency === c 
+                      ? 'bg-gradient-gold-amber text-navy-900 font-medium' 
+                      : 'text-white/40 hover:text-white/70'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
             </div>
-          ) : (
-            recent.map((r, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: i < recent.length - 1 ? "0.5px solid var(--color-border-tertiary)" : "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: TYPE_C[r.type]?.bg || "#F1EFE8", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Icon n={TYPE_ICON[r.type] || "ti-minus"} size={16} color={TYPE_C[r.type]?.text || "#5F5E5A"} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)" }}>{r.subcategory}</div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
-                      {r.category} · {r.month || ""}
-                      {showAllYears && <span style={{ marginLeft: 6, color: "#1D9E75" }}>({r.year})</span>}
+          </div>
+        </GlassPanel>
+
+        <div className="px-4 pb-6">
+          {/* Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {metricConfigs.map((metric, idx) => (
+              <motion.div
+                key={metric.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.08, duration: 0.4 }}
+                whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+              >
+                <div className="relative overflow-hidden rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-4 transition-all duration-300 hover:shadow-xl">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ background: `${metric.accent}18`, border: `1px solid ${metric.accent}28` }}
+                      >
+                        <metric.icon size={16} style={{ color: metric.accent }} />
+                      </div>
+                      <span className="text-2xs font-semibold uppercase tracking-wider text-white/40">
+                        {metric.label}
+                      </span>
                     </div>
+                    {metric.trend && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        metric.trend === 'up' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-coral-500/20 text-coral-400'
+                      }`}>
+                        {metric.trend === 'up' ? '↑' : '↓'} vs last month
+                      </span>
+                    )}
                   </div>
+
+                  <div className="text-2xl font-bold text-white tabular-nums tracking-tighter">
+                    {fmt(metric.value)}
+                  </div>
+
+                  {metric.treasure && (
+                    <div className="mt-2 flex items-center gap-1">
+                      <span className="text-2xs text-accent-gold/60">Treasure collected</span>
+                      <span className="text-accent-gold">⚜️</span>
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: r.type === "Income" ? "#27500A" : "#712B13" }}>
-                  {r.type === "Income" ? "+" : "-"}{settings.displayCurrency === "INR" ? formatINR(r.amtINR) : formatUSD(r.amtUSD)}
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Year Voyage Toggle - Fix: Make sure buttons work */}
+          <div className="flex justify-end mb-6">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-lg bg-gradient-gold-amber opacity-20 blur-md" />
+              <div className="relative flex glass rounded-lg p-1 gap-1">
+                <button
+                  onClick={handleYearClick}
+                  disabled={!activeYear}
+                  className={`px-5 py-2 rounded-md text-sm font-medium transition-all duration-300 ${
+                    !showAllYears && activeYear
+                      ? 'bg-gradient-gold-amber text-navy-900 shadow-lg' 
+                      : 'text-white/50 hover:text-white/80'
+                  } ${!activeYear ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Calendar size={14} className="inline mr-1.5" />
+                  {displayYear ? `Year ${displayYear}` : 'Select Year'}
+                </button>
+                <button
+                  onClick={handleAllYearsClick}
+                  className={`px-5 py-2 rounded-md text-sm font-medium transition-all duration-300 ${
+                    showAllYears 
+                      ? 'bg-gradient-gold-amber text-navy-900 shadow-lg' 
+                      : 'text-white/50 hover:text-white/80'
+                  }`}
+                >
+                  <Anchor size={14} className="inline mr-1.5" />
+                  All Voyages ({yearCount})
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-5"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-accent-emerald" />
+                    {showAllYears ? "Tides of Time" : `Winds of ${displayYear}`}
+                  </h3>
+                  <p className="text-2xs text-white/30 mt-0.5">Income vs Expenses by moon cycle</p>
+                </div>
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 rounded-full bg-accent-emerald" />
+                  <span className="text-2xs text-white/40 ml-1">Income</span>
+                  <span className="w-2 h-2 rounded-full bg-accent-coral ml-2" />
+                  <span className="text-2xs text-white/40 ml-1">Expense</span>
                 </div>
               </div>
-            ))
-          )}
+              <div className="h-48">
+                <MiniBar data={charts.bar || []} />
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              className="rounded-xl bg-white/5 backdrop-blur-md border border-white/10 p-5"
+            >
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-accent-gold" />
+                  {showAllYears ? "Treasure Map" : `Bounty of ${displayYear}`}
+                </h3>
+                <p className="text-2xs text-white/30 mt-0.5">Where the doubloons went</p>
+              </div>
+              <div className="h-48">
+                <MiniDonut data={charts.donut || []} />
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Recent Transactions */}
+          <RecentTransactions 
+            transactions={recent}
+            showAllYears={showAllYears}
+            displayYear={displayYear}
+            formatValue={fmt}
+            displayRowsLength={displayRows.length}
+          />
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 };

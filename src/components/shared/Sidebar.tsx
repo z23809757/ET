@@ -1,8 +1,25 @@
 import React from 'react';
-import { S, TYPE_C, TYPE_ICON } from '../../lib/constants';
-import { Icon } from './Icon';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  LayoutDashboard, 
+  BarChart3, 
+  Calendar, 
+  Folder, 
+  FolderPlus, 
+  Database, 
+  Trash2, 
+  LogOut, 
+  ChevronLeft, 
+  ChevronRight,
+  ChevronDown,
+  Compass,
+  Anchor,
+  Sparkles,
+  Plus
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Table } from '../../types/finance';
+import { cn } from '../../lib/utils';
 
 interface SidebarProps {
   years: Array<{ id: string; year: number }>;
@@ -24,6 +41,39 @@ interface SidebarProps {
   onDeleteTable: (tabId: string, tableId: string, name: string, count: number) => void;
   onClose: () => void;
 }
+
+// Sidebar Navigation Item Component
+const SidebarNavItem: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  sub?: boolean;
+  badge?: string;
+  onClick?: () => void;
+  className?: string;
+}> = ({ icon, label, active, sub, badge, onClick, className }) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      "w-full flex items-center gap-2.5 transition-all duration-200 rounded-lg",
+      sub ? "pl-8 pr-3 py-1.5 text-xs" : "px-4 py-2 text-sm",
+      active 
+        ? "bg-gradient-gold-amber/10 text-accent-gold" 
+        : "text-white/50 hover:text-white/80 hover:bg-white/5",
+      className
+    )}
+  >
+    <span className={cn("flex-shrink-0", active ? "text-accent-gold" : "text-white/40")}>
+      {icon}
+    </span>
+    <span className="flex-1 text-left">{label}</span>
+    {badge && (
+      <span className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-cyan/20 text-accent-cyan">
+        {badge}
+      </span>
+    )}
+  </button>
+);
 
 export const Sidebar: React.FC<SidebarProps> = ({
   years,
@@ -51,190 +101,222 @@ export const Sidebar: React.FC<SidebarProps> = ({
     await signOut();
   };
 
-  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User';
-  const appName = `${displayName}'s ET`;
+  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Sailor';
+  const appName = `${displayName}'s Logbook`;
 
-  if (!isOpen) {
-    return null;
-  }
+  if (!isOpen) return null;
 
   return (
-    <div style={S.sidebar}>
+    <motion.aside
+      initial={{ x: -280 }}
+      animate={{ x: 0 }}
+      exit={{ x: -280 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="fixed left-0 top-0 h-full w-72 z-40 flex flex-col overflow-hidden"
+      style={{
+        background: 'rgba(17, 24, 39, 0.92)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      {/* Top Shimmer Line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent-gold/50 to-transparent" />
+
       {/* Header with Close Button */}
-      <div style={{ padding: "12px 14px", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Icon n="ti-chart-pie-2" size={18} color="#185FA5" />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)" }}>{appName}</span>
+      <div className="relative px-4 py-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              <Compass size={22} className="text-accent-gold" />
+              <Anchor size={12} className="absolute -bottom-1 -right-1 text-accent-cyan" />
+            </div>
+            <div>
+              <span className="text-sm font-semibold text-white/90">{appName}</span>
+              <div className="flex items-center gap-1 mt-0.5">
+                <Sparkles size={8} className="text-accent-gold" />
+                <span className="text-2xs text-white/30 uppercase tracking-wider">Grand Line</span>
+              </div>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button
-              onClick={onClose}
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: "6px",
-                borderRadius: 6,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--color-text-tertiary)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(0, 0, 0, 0.05)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
-            >
-              <Icon n="ti-chevron-left" size={16} />
-            </button>
+          
+          <div className="flex items-center gap-1">
             <button
               onClick={handleLogout}
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: "6px",
-                borderRadius: 6,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--color-text-tertiary)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(216, 90, 48, 0.1)";
-                e.currentTarget.style.color = "#D85A30";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "var(--color-text-tertiary)";
-              }}
+              className="p-1.5 rounded-lg text-white/40 hover:text-accent-coral hover:bg-white/5 transition-all"
+              title="Logout"
             >
-              <Icon n="ti-logout" size={16} />
+              <LogOut size={16} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-all"
+              title="Close sidebar"
+            >
+              <ChevronLeft size={16} />
             </button>
           </div>
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
-        <div style={S.secLabel}>OVERVIEW</div>
-        
-        <div style={S.sbItem(activeView === "dashboard")} onClick={() => onNavigate("dashboard", activeYearId)}>
-          <Icon n="ti-layout-dashboard" size={14} color={activeView === "dashboard" ? "#185FA5" : "var(--color-text-tertiary)"} />Dashboard
-        </div>
-
-        <div style={S.sbItem(activeView === "allyears")} onClick={() => onNavigate("allyears", null)}>
-          <Icon n="ti-chart-bar" size={14} color={activeView === "allyears" ? "#1D9E75" : "var(--color-text-tertiary)"} />All Years
-        </div>
-
-        <div style={{ ...S.secLabel, marginTop: 6 }}>YEARS</div>
-
-        {years.map(year => (
-          <div key={year.id}>
-            <div
-              onClick={() => {
-                onToggleYear(year.id);
-                if (activeYearId !== year.id) onNavigate("dashboard", year.id);
-              }}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 14px", cursor: "pointer" }}
-            >
-              <span style={{ fontSize: 11, fontWeight: 500, color: activeYearId === year.id ? "var(--color-text-primary)" : "var(--color-text-secondary)" }}>{year.year}</span>
-              <Icon n={expandedYears[year.id] ? "ti-chevron-down" : "ti-chevron-right"} size={12} color="var(--color-text-tertiary)" />
-            </div>
-
-            {expandedYears[year.id] && (
-              <>
-                <div
-                  style={{ ...S.sbSub(activeView === "overall" && activeYearId === year.id), color: activeView === "overall" && activeYearId === year.id ? "#633806" : "#854F0B" }}
-                  onClick={() => onNavigate("overall", year.id)}
-                >
-                  <Icon n="ti-table-alias" size={13} color="#EF9F27" />Overall
-                  <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 10, background: "#FAEEDA", color: "#633806", border: "0.5px solid #FAC775", marginLeft: 2 }}>auto</span>
-                </div>
-
-                {(tabsByYear[year.id] || []).map(tab => (
-                  <div key={tab.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 8 }}>
-                    <div
-                      style={{ ...S.sbSub(activeTabId === tab.id && activeView !== "overall" && activeYearId === year.id && activeView !== "table"), flex: 1 }}
-                      onClick={() => onNavigate("tab", year.id, tab.id)}
-                    >
-                      <Icon n={tab.icon || "ti-folder"} size={13} color={activeTabId === tab.id ? "#185FA5" : "var(--color-text-tertiary)"} />
-                      {tab.name}
-                    </div>
-                    <Icon
-                      n="ti-trash"
-                      size={12}
-                      color="var(--color-text-tertiary)"
-                      style={{ cursor: "pointer", opacity: 0.5 }}
-                      onClick={e => {
-                        e.stopPropagation();
-                        const count = (tab.tables || []).reduce((s: number, t: any) => s + (rowsByTable[t.id] || []).length, 0);
-                        onDeleteTab(tab.id, tab.name, count);
-                      }}
-                    />
-                  </div>
-                ))}
-
-                <div
-                  onClick={() => onAddTab(year.id)}
-                  style={{ display: "flex", alignItems: "center", gap: 5, margin: "4px 10px", padding: "4px 8px", border: "0.5px dashed var(--color-border-secondary)", borderRadius: 6, fontSize: 11, color: "var(--color-text-tertiary)", cursor: "pointer" }}
-                >
-                  <Icon n="ti-plus" size={12} />Add tab
-                </div>
-              </>
-            )}
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-3 pb-4">
+        {/* Overview Section */}
+        <div className="mb-6">
+          <div className="px-2 mb-2">
+            <span className="text-2xs font-semibold uppercase tracking-wider text-white/30">Navigation</span>
           </div>
-        ))}
+          
+          <nav className="space-y-0.5">
+            <SidebarNavItem
+              icon={<LayoutDashboard size={16} />}
+              label="Dashboard"
+              active={activeView === 'dashboard'}
+              onClick={() => onNavigate('dashboard', activeYearId)}
+            />
+            <SidebarNavItem
+              icon={<BarChart3 size={16} />}
+              label="All Years"
+              active={activeView === 'allyears'}
+              onClick={() => onNavigate('allyears', null)}
+            />
+          </nav>
+        </div>
+
+        {/* Years Section - Voyages */}
+        <div className="mb-6">
+          <div className="px-2 mb-2">
+            <span className="text-2xs font-semibold uppercase tracking-wider text-white/30 flex items-center gap-1.5">
+              <Anchor size={10} className="text-accent-cyan" />
+              Voyages
+            </span>
+          </div>
+          
+          {years.map(year => (
+            <div key={year.id} className="mb-1">
+              <button
+                onClick={() => {
+                  onToggleYear(year.id);
+                  // Only navigate if the clicked year is different from active year
+                  // if (activeYearId !== year.id) {
+                  //   onNavigate('dashboard', year.id);
+                  // }
+                }}
+                className={cn(
+                  "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all",
+                  activeYearId === year.id 
+                    ? "bg-gradient-gold-amber/10 text-accent-gold" 
+                    : "text-white/60 hover:text-white/80 hover:bg-white/5"
+                )}
+              >
+                <span className="text-sm font-medium">{year.year}</span>
+                <ChevronRight 
+                  size={14} 
+                  className={cn(
+                    "transition-transform duration-200",
+                    expandedYears[year.id] && "rotate-90"
+                  )}
+                />
+              </button>
+
+              <AnimatePresence>
+                {expandedYears[year.id] && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden ml-2"
+                  >
+                    {/* Overall Button */}
+                    <SidebarNavItem
+                      icon={<Calendar size={14} />}
+                      label="Overall"
+                      sub
+                      active={activeView === 'overall' && activeYearId === year.id}
+                      onClick={() => onNavigate('overall', year.id)}
+                    />
+
+                    {/* Tabs */}
+                    {(tabsByYear[year.id] || []).map(tab => (
+                      <div key={tab.id} className="flex items-center group">
+                        <SidebarNavItem
+                          icon={<Folder size={14} />}
+                          label={tab.name}
+                          sub
+                          active={activeTabId === tab.id && activeView !== 'overall' && activeYearId === year.id && activeView !== 'table'}
+                          onClick={() => onNavigate('tab', year.id, tab.id)}
+                          className="flex-1"
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const count = (tab.tables || []).reduce((s: number, t: any) => s + (rowsByTable[t.id] || []).length, 0);
+                            onDeleteTab(tab.id, tab.name, count);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded text-white/30 hover:text-accent-coral transition-all mr-1"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Add Tab Button */}
+                    <button
+                      onClick={() => onAddTab(year.id)}
+                      className="w-full flex items-center gap-2 pl-8 pr-3 py-1.5 mt-1 rounded-lg text-xs text-white/40 hover:text-white/60 hover:bg-white/5 transition-all"
+                    >
+                      <FolderPlus size={12} />
+                      Add tab
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
 
         {/* Global Reference Tables Section */}
         {globalTables.length > 0 && (
-          <div style={{ marginTop: 16, borderTop: '0.5px solid var(--color-border-tertiary)', paddingTop: 12 }}>
-            <div style={{ ...S.secLabel, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon n="ti-database" size={12} />
-              GLOBAL REFERENCE
+          <div className="mb-6">
+            <div className="px-2 mb-2 flex items-center gap-2">
+              <Database size={12} className="text-accent-cyan" />
+              <span className="text-2xs font-semibold uppercase tracking-wider text-white/30">Global Reference</span>
             </div>
+            
             {globalTables.map(table => (
-              <div
+              <SidebarNavItem
                 key={table.id}
+                icon={<Database size={14} />}
+                label={table.name}
+                active={activeTableId === table.id && activeView === 'table'}
                 onClick={() => onNavigate('table', null, null, table.id)}
-                style={{
-                  ...S.sbSub(activeTableId === table.id && activeView === 'table'),
-                  marginLeft: 8,
-                  opacity: 0.8,
-                  borderLeft: '2px solid #185FA5'
-                }}
-              >
-                <Icon n="ti-database" size={13} color="#185FA5" />
-                {table.name}
-                <span style={{ fontSize: 9, marginLeft: 'auto', color: '#185FA5', background: '#E6F1FB', padding: '1px 6px', borderRadius: 10 }}>
-                  Global
-                </span>
-              </div>
+                badge="Global"
+              />
             ))}
           </div>
         )}
       </div>
 
-      {/* Bottom Buttons - Split */}
-      <div>
+      {/* Bottom Buttons */}
+      <div className="border-t border-white/10 p-3 space-y-2">
         {/* Add Year Button */}
-        <div
+        <button
           onClick={onAddYear}
-          style={{ display: "flex", alignItems: "center", gap: 6, margin: "8px 12px 4px", padding: "6px 10px", border: "0.5px dashed var(--color-border-secondary)", borderRadius: 8, fontSize: 11, color: "var(--color-text-tertiary)", cursor: "pointer" }}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm text-white/60 hover:text-white/80 hover:bg-white/5 transition-all border border-white/10 hover:border-accent-gold/30"
         >
-          <Icon n="ti-plus" size={12} />Add new year
-        </div>
+          <Plus size={14} />
+          Add new year
+        </button>
 
         {/* Add Global Reference Table Button */}
-        <div
+        <button
           onClick={onAddGlobalTable}
-          style={{ display: "flex", alignItems: "center", gap: 6, margin: "0px 12px 10px", padding: "6px 10px", border: "0.5px dashed #185FA5", borderRadius: 8, fontSize: 11, color: "#185FA5", cursor: "pointer", background: "rgba(24, 95, 165, 0.05)" }}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm text-accent-gold/80 hover:text-accent-gold hover:bg-accent-gold/10 transition-all border border-accent-gold/20 hover:border-accent-gold/40"
         >
-          <Icon n="ti-database" size={12} />Add Reference Table
-        </div>
+          <Database size={14} />
+          Add Reference Table
+        </button>
       </div>
-    </div>
+    </motion.aside>
   );
 };

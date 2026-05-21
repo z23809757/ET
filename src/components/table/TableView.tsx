@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { S } from '../../lib/constants';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '../shared/Icon';
 import { Button } from '../shared/Button';
 import { Table, Row, UserSettings } from '../../types/finance';
@@ -10,6 +10,7 @@ import { formulaStorageService } from '../../services/formulaStorageService';
 import { useMergeCells } from '../../hooks/useMergeCells';
 import { useFormulaEvaluation } from '../../hooks/useFormulaEvaluation';
 import { MergeToolbar } from './MergeToolbar';
+import { cn } from '../../lib/utils';
 
 interface TableViewProps {
   table: Table;
@@ -64,11 +65,10 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     loadFormulas();
   }, [table.id]);
 
-  // ✅ DEPENDENCY-AWARE MERGED FORMULA EVALUATION
+  // DEPENDENCY-AWARE MERGED FORMULA EVALUATION
   useEffect(() => {
     const newValues: Record<string, any> = {};
 
-    // Separate base merges (no MERGE_ dependencies) from dependent ones
     const baseMerges = merges.filter(m => {
       const raw = m.merged_value || '';
       return !raw.startsWith('=') || !raw.includes('MERGE_');
@@ -78,7 +78,6 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
       return raw.startsWith('=') && raw.includes('MERGE_');
     });
 
-    // Pass 1: resolve base merges first
     for (const merge of baseMerges) {
       const rawValue = merge.merged_value || '';
       if (rawValue.startsWith('=')) {
@@ -93,7 +92,6 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
       }
     }
 
-    // Pass 2+: resolve dependent merges in a loop
     let unresolved = [...dependentMerges];
     const MAX_PASSES = 20;
     let pass = 0;
@@ -105,12 +103,10 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
       for (const merge of unresolved) {
         let formula = merge.merged_value.substring(1);
 
-        // Check if this formula contains legacy ! references (no MERGE_)
         const hasLegacyRefs = formula.includes('!');
         const hasMergeRefs = formula.includes('MERGE_');
 
         if (hasLegacyRefs && !hasMergeRefs) {
-          // Legacy format — resolve directly via evaluateFormulaForRow
           const firstRow = rows.find(r => r.id === merge.start_row_id);
           if (firstRow) {
             const result = evaluateFormulaForRow(merge.merged_value, firstRow, table.id);
@@ -120,9 +116,6 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
           continue;
         }
 
-        // Check if all MERGE_ refs this formula needs are already resolved
-        // Use exact UUID pattern (8-4-4-4-12) so "-10" after a MERGE_ UUID
-        // is NOT treated as part of the ID (fixes "MERGE_<uuid>-10" bug).
         const neededRefs = formula.match(/MERGE_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/g) || [];
         const allResolved = neededRefs.every(ref => {
           const refId = ref.replace('MERGE_', '');
@@ -134,19 +127,16 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
           continue;
         }
 
-        // All dependencies resolved — substitute and evaluate
         for (const [mergeId, resolvedVal] of Object.entries(newValues)) {
           formula = formula.split(`MERGE_${mergeId}`).join(String(resolvedVal));
         }
 
-        // Also resolve ROW_ references
         formula = formula.replace(
           /ROW_([a-f0-9-]+)_([a-f0-9-]+)/g,
           (_, rowId, fieldId) => {
             const row = rows.find(r => r.id === rowId);
             if (!row) return '0';
             
-            // Check if this is a merged cell
             const mergeRef = merges.find(m =>
               m.start_row_id === rowId &&
               m.start_col_id === fieldId
@@ -186,7 +176,6 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     setMergedFormulaValues(newValues);
   }, [merges, rows, table.id, evaluateFormulaForRow]);
 
-  // ✅ Regular formula evaluation
   const evaluateAllFormulas = useCallback(() => {
     const formulaFields = table.fields.filter(f => f.type === 'Formula');
     if (formulaFields.length === 0) return;
@@ -357,40 +346,34 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
 
   const renderInput = (f: any) => {
     if (f.type === 'Formula') {
-      return React.createElement('div', { style: { flex: 1, minWidth: 80 }, key: f.id },
-        React.createElement('div', {
-          style: {
-            padding: '6px 8px', fontSize: 12,
-            background: 'var(--color-background-secondary)',
-            borderRadius: 6, color: 'var(--color-text-tertiary)', textAlign: 'center'
-          }
-        },
-          React.createElement(Icon, { n: 'ti-calculator', size: 12 }), ' Auto-calculated'
-        )
+      return (
+        <div className="flex-1 min-w-[80px]" key={f.id}>
+          <div className="px-2 py-1.5 text-xs bg-white/5 rounded-lg text-white/40 text-center flex items-center justify-center gap-1.5">
+            <Icon n="ti-calculator" size={12} />
+            Auto-calculated
+          </div>
+        </div>
       );
     }
 
     const v = form[f.id] || '';
     const set = (val: any) => setForm((p: any) => ({ ...p, [f.id]: val }));
-    const base = {
-      flex: 1, padding: '6px 8px', fontSize: 12,
-      border: '0.5px solid var(--color-border-secondary)',
-      borderRadius: 6, background: 'var(--color-background-secondary)',
-      color: 'var(--color-text-primary)', outline: 'none', minWidth: 0
-    };
+    const baseInputClass = "flex-1 px-2 py-1.5 text-xs border border-white/10 rounded-lg bg-white/5 text-white/90 placeholder:text-white/20 focus:outline-none focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/30 transition-all min-w-0";
 
     if (f.type === 'Dropdown') {
-      return React.createElement('select', { key: f.id, value: v, onChange: (e: any) => set(e.target.value), style: base },
-        React.createElement('option', { value: '' }, 'Select…'),
-        (f.dropdownOptions || []).map((o: any) =>
-          React.createElement('option', { key: o.id, value: o.label }, o.label)
-        )
+      return (
+        <select key={f.id} value={v} onChange={(e: any) => set(e.target.value)} className={baseInputClass}>
+          <option value="">Select…</option>
+          {(f.dropdownOptions || []).map((o: any) => (
+            <option key={o.id} value={o.label}>{o.label}</option>
+          ))}
+        </select>
       );
     }
-    if (f.type === 'Date')   return React.createElement('input', { key: f.id, type: 'date',   value: v, onChange: (e: any) => set(e.target.value), style: base });
-    if (f.type === 'Month')  return React.createElement('input', { key: f.id, type: 'month',  value: v, onChange: (e: any) => set(e.target.value), style: base });
-    if (f.type === 'Number') return React.createElement('input', { key: f.id, type: 'number', value: v, onChange: (e: any) => set(e.target.value), placeholder: f.name, style: { ...base, textAlign: 'right' } });
-    return React.createElement('input', { key: f.id, type: 'text', value: v, onChange: (e: any) => set(e.target.value), placeholder: f.name, style: base });
+    if (f.type === 'Date') return <input key={f.id} type="date" value={v} onChange={(e: any) => set(e.target.value)} className={baseInputClass} />;
+    if (f.type === 'Month') return <input key={f.id} type="month" value={v} onChange={(e: any) => set(e.target.value)} className={baseInputClass} />;
+    if (f.type === 'Number') return <input key={f.id} type="number" value={v} onChange={(e: any) => set(e.target.value)} placeholder={f.name} className={cn(baseInputClass, "text-right")} />;
+    return <input key={f.id} type="text" value={v} onChange={(e: any) => set(e.target.value)} placeholder={f.name} className={baseInputClass} />;
   };
 
   const fmtCell = (row: Row, f: any): React.ReactNode | null => {
@@ -416,50 +399,26 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
         }
       }
 
-      return React.createElement('div', {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-          width: '100%'
-        }
-      },
-        React.createElement('div', {
-          style: {
-            textAlign: 'center',
-            fontWeight: 500,
-            color: 'var(--color-text-primary)',
-            padding: '4px 8px',
-            flex: 1,
-            borderRadius: '4px'
-          }
-        }, displayValue),
-        React.createElement('button', {
-          onClick: (e) => {
-            e.stopPropagation();
-            setShowFormulaBuilder({ 
-              field: f, 
-              rowId: mergedCell.start_row_id, 
-              currentFormula: mergedCell.merged_value 
-            });
-          },
-          style: {
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 10,
-            color: '#185FA5',
-            padding: '2px 4px',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4
-          }
-        },
-          React.createElement(Icon, { n: 'ti-edit', size: 12 }),
-          ' Edit'
-        )
+      return (
+        <div className="flex items-center justify-between gap-2 w-full">
+          <div className="text-center font-medium text-white/90 px-2 py-1 flex-1 rounded">
+            {displayValue}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowFormulaBuilder({ 
+                field: f, 
+                rowId: mergedCell.start_row_id, 
+                currentFormula: mergedCell.merged_value 
+              });
+            }}
+            className="bg-transparent border-none cursor-pointer text-xs text-accent-cyan hover:text-accent-gold transition-colors px-1 py-0.5 rounded flex items-center gap-1"
+          >
+            <Icon n="ti-edit" size={12} />
+            Edit
+          </button>
+        </div>
       );
     }
 
@@ -468,36 +427,37 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
       const calculatedValue = formulaValues[row.id]?.[f.id];
 
       if (isLoadingFormulas) {
-        return React.createElement('span', { style: { color: 'var(--color-text-tertiary)', fontSize: 11 } }, 'Loading...');
+        return <span className="text-white/40 text-xs">Loading...</span>;
       }
 
       if (!formula) {
-        return React.createElement('button', {
-          onClick: () => setShowFormulaBuilder({ field: f, rowId: row.id }),
-          style: {
-            background: 'transparent', border: '0.5px dashed var(--color-border-secondary)',
-            borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
-            color: '#185FA5', display: 'flex', alignItems: 'center', gap: 4
-          }
-        },
-          React.createElement(Icon, { n: 'ti-calculator', size: 12 }), ' Set Formula'
+        return (
+          <button
+            onClick={() => setShowFormulaBuilder({ field: f, rowId: row.id })}
+            className="bg-transparent border border-dashed border-white/20 rounded px-2 py-1 text-xs cursor-pointer text-accent-cyan hover:text-accent-gold hover:border-accent-cyan/50 transition-all flex items-center gap-1.5"
+          >
+            <Icon n="ti-calculator" size={12} />
+            Set Formula
+          </button>
         );
       }
 
       if (calculatedValue !== undefined && calculatedValue !== null) {
         const displayValue = formatField(calculatedValue, f.currency || 'USD', settings.displayCurrency, settings.exchangeRate);
-        return React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
-          React.createElement('span', null, displayValue),
-          React.createElement('button', {
-            onClick: () => setShowFormulaBuilder({ field: f, rowId: row.id, currentFormula: formula }),
-            style: { background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 10, color: '#185FA5', padding: '2px 4px' }
-          },
-            React.createElement(Icon, { n: 'ti-edit', size: 12 }), ' Edit'
-          )
+        return (
+          <div className="flex items-center justify-between gap-2">
+            <span>{displayValue}</span>
+            <button
+              onClick={() => setShowFormulaBuilder({ field: f, rowId: row.id, currentFormula: formula })}
+              className="bg-transparent border-none cursor-pointer text-xs text-accent-cyan hover:text-accent-gold transition-colors px-1 py-0.5 rounded"
+            >
+              <Icon n="ti-edit" size={12} /> Edit
+            </button>
+          </div>
         );
       }
 
-      return React.createElement('span', { style: { color: 'var(--color-text-tertiary)', fontSize: 11 } }, 'No value');
+      return <span className="text-white/40 text-xs">No value</span>;
     }
 
     const v = row[f.id];
@@ -540,139 +500,161 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     setShowFormulaBuilder(null);
   };
 
-  return React.createElement('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } },
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <MergeToolbar
+        selectionMode={selectionMode}
+        onMergeModeToggle={() => setSelectionMode(selectionMode === 'merge' ? 'none' : 'merge')}
+        onUnmergeModeToggle={() => setSelectionMode(selectionMode === 'unmerge' ? 'none' : 'unmerge')}
+        onClearAllMerges={clearAllMerges}
+        hasSelection={!!selectedRange}
+        onApplyMerge={handleApplyMerge}
+        onCancelSelection={handleCancelSelection}
+      />
 
-    React.createElement(MergeToolbar, {
-      selectionMode,
-      onMergeModeToggle:   () => setSelectionMode(selectionMode === 'merge'   ? 'none' : 'merge'),
-      onUnmergeModeToggle: () => setSelectionMode(selectionMode === 'unmerge' ? 'none' : 'unmerge'),
-      onClearAllMerges:    clearAllMerges,
-      hasSelection:        !!selectedRange,
-      onApplyMerge:        handleApplyMerge,
-      onCancelSelection:   handleCancelSelection
-    }),
+      {rows.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-center py-16 text-white/40">
+          <Icon n="ti-table-off" size={40} />
+          <div className="mt-3 text-sm">No entries yet</div>
+          <div className="text-xs text-white/30 mt-1">Click "Add" below to create your first entry</div>
+        </div>
+      ) : (
+        <div 
+          onScroll={(e: React.UIEvent<HTMLDivElement>) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
+          className="flex-1 overflow-auto relative"
+        >
+          <table className="w-full border-collapse text-xs">
+            <thead className="sticky top-0 z-10 bg-navy-800/95 backdrop-blur-sm">
+              <tr className="border-b border-white/10">
+                {table.fields.map(f => (
+                  <th key={f.id} className="px-2 py-2.5 text-left text-2xs font-semibold text-white/50 uppercase tracking-wider">
+                    {f.name}
+                    {f.type === 'Formula' && <span className="ml-1 text-[9px] text-accent-emerald">🔢</span>}
+                  </th>
+                ))}
+                <th className="px-2 py-2.5 text-left text-2xs font-semibold text-white/50 uppercase tracking-wider w-20">Actions</th>
+              </tr>
+            </thead>
 
-    rows.length === 0
-      ? React.createElement('div', { style: { textAlign: 'center', padding: 60, color: 'var(--color-text-tertiary)' } },
-          React.createElement(Icon, { n: 'ti-table-off', size: 30 }),
-          React.createElement('div', { style: { marginTop: 12 } }, 'No entries yet')
-        )
-      : React.createElement('div', {
-          onScroll: (e: React.UIEvent<HTMLDivElement>) => setScrollTop((e.target as HTMLDivElement).scrollTop),
-          style: { flex: 1, overflowY: 'auto', position: 'relative' }
-        },
-          React.createElement('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed' } },
+            <tbody>
+              {startIdx > 0 && (
+                <tr style={{ height: startIdx * ROW_H }}>
+                  <td colSpan={table.fields.length + 1} />
+                </tr>
+              )}
 
-            React.createElement('thead', { style: { position: 'sticky', top: 0, zIndex: 2 } },
-              React.createElement('tr', null,
-                table.fields.map(f =>
-                  React.createElement('th', { key: f.id, style: S.th },
-                    f.name,
-                    f.type === 'Formula' && React.createElement('span', { style: { marginLeft: 4, fontSize: 9, color: '#1D9E75' } }, '🔢')
-                  )
-                ),
-                React.createElement('th', { style: { ...S.th, width: 80 } }, 'Actions')
-              )
-            ),
-
-            React.createElement('tbody', null,
-
-              startIdx > 0 && React.createElement('tr', { style: { height: startIdx * ROW_H } },
-                React.createElement('td', { colSpan: table.fields.length + 1 })
-              ),
-
-              visible.map((row) => {
+              {visible.map((row) => {
                 const isDel = delId === row.id;
 
-                return React.createElement('tr', {
-                  key: row.id,
-                  style: {
-                    borderBottom: '0.5px solid var(--color-border-tertiary)',
-                    height: ROW_H,
-                    background: 'transparent'
-                  }
-                },
+                return (
+                  <tr 
+                    key={row.id}
+                    className="border-b border-white/5 hover:bg-white/5 transition-all duration-150 group"
+                    style={{ height: ROW_H }}
+                  >
+                    {table.fields.map((f) => {
+                      const cellContent = fmtCell(row, f);
+                      if (cellContent === null) return null;
+                      
+                      const mergedCell = isCellMerged(row.id, f.id);
+                      const isSelected = isCellSelected(row.id, f.id);
+                      const isInMergeMode = selectionMode !== 'none';
+                      
+                      const rowSpan = mergedCell ? getRowSpan(mergedCell, rows) : 1;
+                      const colSpan = mergedCell ? getColSpan(mergedCell, table.fields) : 1;
 
-                  table.fields.map((f) => {
-                    const cellContent = fmtCell(row, f);
-                    if (cellContent === null) return null;
-                    
-                    const mergedCell = isCellMerged(row.id, f.id);
-                    const isSelected = isCellSelected(row.id, f.id);
-                    const isInMergeMode = selectionMode !== 'none';
-                    
-                    const rowSpan = mergedCell ? getRowSpan(mergedCell, rows) : 1;
-                    const colSpan = mergedCell ? getColSpan(mergedCell, table.fields) : 1;
+                      return (
+                        <td
+                          key={`${row.id}_${f.id}`}
+                          onClick={(e: React.MouseEvent) => handleCellClick(row.id, f.id, e)}
+                          rowSpan={rowSpan}
+                          colSpan={colSpan}
+                          className={cn(
+                            "px-2 py-1.5 text-white/80 transition-all",
+                            isInMergeMode && "cursor-crosshair",
+                            isInMergeMode && isSelected && "bg-accent-cyan/10 border border-accent-cyan/50"
+                          )}
+                        >
+                          {cellContent}
+                        </td>
+                      );
+                    })}
 
-                    return React.createElement('td', {
-                      key: `${row.id}_${f.id}`,
-                      style: {
-                        ...S.td,
-                        cursor: isInMergeMode ? 'crosshair' : 'default',
-                        background: (isInMergeMode && isSelected) ? '#E6F1FB' : 'transparent',
-                        border: (isInMergeMode && isSelected) ? '1px solid #185FA5' : (S.td as any).border,
-                      },
-                      onClick: (e: React.MouseEvent) => handleCellClick(row.id, f.id, e),
-                      rowSpan: rowSpan,
-                      colSpan: colSpan,
-                    }, cellContent);
-                  }),
-
-                  React.createElement('td', { style: { ...S.td, width: 80 } },
-                    isDel
-                      ? React.createElement('span', { style: { fontSize: 11 } },
-                          React.createElement('span', { style: { color: '#791F1F' } }, 'Delete? '),
-                          React.createElement('span', {
-                            onClick: () => { onDeleteRow(row.id); setDelId(null); },
-                            style: { color: '#A32D2D', cursor: 'pointer', fontWeight: 500 }
-                          }, 'Yes'),
-                          React.createElement('span', { style: { color: 'var(--color-text-tertiary)' } }, ' · '),
-                          React.createElement('span', {
-                            onClick: () => setDelId(null),
-                            style: { color: 'var(--color-text-tertiary)', cursor: 'pointer' }
-                          }, 'Cancel')
-                        )
-                      : React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-                          React.createElement(Icon, { n: 'ti-edit',  size: 14, color: '#185FA5', style: { cursor: 'pointer' }, onClick: () => startEdit(row) }),
-                          React.createElement(Icon, { n: 'ti-trash', size: 14, color: '#D85A30', style: { cursor: 'pointer' }, onClick: () => setDelId(row.id) })
-                        )
-                  )
+                    <td className="px-2 py-1.5">
+                      {isDel ? (
+                        <div className="flex items-center gap-1 text-xs">
+                          <span className="text-coral-400">Delete?</span>
+                          <button 
+                            onClick={() => { onDeleteRow(row.id); setDelId(null); }}
+                            className="text-coral-400 hover:text-coral-300 font-medium"
+                          >
+                            Yes
+                          </button>
+                          <span className="text-white/30">·</span>
+                          <button 
+                            onClick={() => setDelId(null)}
+                            className="text-white/40 hover:text-white/60"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Icon n="ti-edit" size={14} color="#06B6D4" className="cursor-pointer hover:scale-110 transition-transform" onClick={() => startEdit(row)} />
+                          <Icon n="ti-trash" size={14} color="#F43F5E" className="cursor-pointer hover:scale-110 transition-transform" onClick={() => setDelId(row.id)} />
+                        </div>
+                      )}
+                    </td>
+                  </tr>
                 );
-              }),
+              })}
 
-              endIdx < total && React.createElement('tr', { style: { height: (total - endIdx) * ROW_H } },
-                React.createElement('td', { colSpan: table.fields.length + 1 })
-              )
-            )
-          )
-        ),
+              {endIdx < total && (
+                <tr style={{ height: (total - endIdx) * ROW_H }}>
+                  <td colSpan={table.fields.length + 1} />
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-    React.createElement('div', { style: S.entryBar },
-      React.createElement('div', { style: { fontSize: 10, fontWeight: 500, color: 'var(--color-text-tertiary)', marginBottom: 6, letterSpacing: '.04em' } },
-        editId ? 'EDIT ROW' : 'ADD NEW ROW'
-      ),
-      React.createElement('div', { style: { display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' } },
-        table.fields.map(f =>
-          React.createElement('div', { key: f.id, style: { flex: 1, minWidth: 80 } }, renderInput(f))
-        ),
-        React.createElement(Button, { variant: editId ? 'green' : 'blue', onClick: submit },
-          React.createElement(Icon, { n: editId ? 'ti-check' : 'ti-plus', size: 13 }),
-          editId ? 'Save' : 'Add'
-        ),
-        editId && React.createElement('span', {
-          onClick: cancelEdit,
-          style: { fontSize: 11, color: 'var(--color-text-tertiary)', cursor: 'pointer' }
-        }, 'Cancel')
-      )
-    ),
+      {/* Entry Bar */}
+      <div className="border-t border-white/10 p-3 bg-white/5 backdrop-blur-sm">
+        <div className="text-2xs font-semibold text-white/40 uppercase tracking-wider mb-2">
+          {editId ? 'EDIT ROW' : 'ADD NEW ROW'}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {table.fields.map(f => (
+            <div key={f.id} className="flex-1 min-w-[80px]">
+              {renderInput(f)}
+            </div>
+          ))}
+          <Button variant={editId ? 'green' : 'blue'} onClick={submit} size="sm">
+            <Icon n={editId ? 'ti-check' : 'ti-plus'} size={12} />
+            {editId ? 'Save' : 'Add'}
+          </Button>
+          {editId && (
+            <button
+              onClick={cancelEdit}
+              className="text-xs text-white/40 hover:text-white/60 transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
 
-    showFormulaBuilder && React.createElement(FormulaBuilderModal, {
-      tableId:        table.id,
-      fieldName:      showFormulaBuilder.field.name,
-      initialFormula: showFormulaBuilder.currentFormula,
-      merges:         merges,
-      onSave:         handleFormulaSave,
-      onClose:        () => setShowFormulaBuilder(null)
-    })
+      {showFormulaBuilder && (
+        <FormulaBuilderModal
+          tableId={table.id}
+          fieldName={showFormulaBuilder.field.name}
+          initialFormula={showFormulaBuilder.currentFormula}
+          merges={merges}
+          onSave={handleFormulaSave}
+          onClose={() => setShowFormulaBuilder(null)}
+        />
+      )}
+    </div>
   );
 };

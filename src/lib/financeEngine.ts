@@ -1,101 +1,186 @@
+// src/lib/financeEngine.ts
 import { OverallRow, DashboardMetrics, ChartData, MonthlySummary, CategorySummary, YearlyComparison, Field } from '../types/finance';
 import { MONTHS } from './constants';
 import { formatUSD, formatINR, toUsdInr } from './formatters';
 
 export const FE = {
-aggregateOverall(
-  tabs: any[],
-  rowsByTable: Record<string, any[]>,
-  rate: number,
-  year: number
-): OverallRow[] {
-  const out: OverallRow[] = [];
-  for (const tab of tabs) {
-    for (const tbl of tab.tables || []) {
-      if (!tbl.type || tbl.type === "None") continue;
-      // UPDATED LINE - Now includes Formula type
-      const pf = (tbl.fields || []).find((f: any) => f.isPrimary && (f.type === "Number" || f.type === "Formula"));
-      if (!pf) continue;
-      const mf = (tbl.fields || []).find((f: any) => f.type === "Month" || f.type === "Date");
-      for (const row of rowsByTable[tbl.id] || []) {
-        // For formula fields, we need to get the calculated value
-        let amount = row[pf.id];
-        
-        // If it's a formula field and has a calculated value in formulaValues
-        if (pf.type === "Formula" && row._formulaValues?.[pf.id]) {
-          amount = row._formulaValues[pf.id];
+  aggregateOverall(
+    tabs: any[],
+    rowsByTable: Record<string, any[]>,
+    rate: number,
+    year: number
+  ): OverallRow[] {
+    const out: OverallRow[] = [];
+    for (const tab of tabs) {
+      for (const tbl of tab.tables || []) {
+        if (!tbl.type || tbl.type === "None") continue;
+        const pf = (tbl.fields || []).find((f: any) => f.isPrimary && (f.type === "Number" || f.type === "Formula"));
+        if (!pf) continue;
+        const mf = (tbl.fields || []).find((f: any) => f.type === "Month" || f.type === "Date");
+        for (const row of rowsByTable[tbl.id] || []) {
+          let amount = row[pf.id];
+          
+          if (pf.type === "Formula" && row._formulaValues?.[pf.id]) {
+            amount = row._formulaValues[pf.id];
+          }
+          
+          const { usd, inr } = toUsdInr(amount, pf.currency, rate);
+          const rawMonth = mf ? (row[mf.id] || "") : "";
+          out.push({
+            id: row.id,
+            year: year,
+            month: rawMonth ? rawMonth.slice(0, 7) : "",
+            date: rawMonth,
+            category: tab.name,
+            subcategory: tbl.name,
+            type: tbl.type,
+            amtUSD: usd,
+            amtINR: inr,
+            tabId: tab.id,
+            tableId: tbl.id,
+          });
         }
-        
-        const { usd, inr } = toUsdInr(amount, pf.currency, rate);
-        const rawMonth = mf ? (row[mf.id] || "") : "";
-        out.push({
-          id: row.id,
-          year: year,
-          month: rawMonth ? rawMonth.slice(0, 7) : "",
-          date: rawMonth,
-          category: tab.name,
-          subcategory: tbl.name,
-          type: tbl.type,
-          amtUSD: usd,
-          amtINR: inr,
-          tabId: tab.id,
-          tableId: tbl.id,
-        });
       }
     }
+    return out.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  },
+
+  filterByDate(rows: OverallRow[], from: string, to: string): OverallRow[] {
+    if (!from && !to) return rows;
+    
+    return rows.filter(row => {
+      if (!row.month) return false;
+      if (from && row.month < from) return false;
+      if (to && row.month > to) return false;
+      return true;
+    });
+  },
+
+dashboardMetrics(rows: OverallRow[], dispCur: string, rate: number): DashboardMetrics {
+  let income = 0, expense = 0, loanINR = 0;
+  for (const r of rows) {
+    // Safely get amounts
+    const amtUSD = (typeof r.amtUSD === 'number' && !isNaN(r.amtUSD)) ? r.amtUSD : 0;
+    const amtINR = (typeof r.amtINR === 'number' && !isNaN(r.amtINR)) ? r.amtINR : 0;
+    
+    if (r.type === "Income") income += amtUSD;
+    else if (r.type === "Expense") expense += amtUSD;
+    else if (r.type === "Loan") loanINR += amtINR;
   }
-  return out.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-},
-
-filterByDate(rows: OverallRow[], from: string, to: string): OverallRow[] {
-  // If no filters, return all rows
-  if (!from && !to) return rows;
   
-  return rows.filter(row => {
-    // Skip rows without month data
-    if (!row.month) return false;
-    
-    // Filter by range
-    if (from && row.month < from) return false;
-    if (to && row.month > to) return false;
-    
-    return true;
-  });
+  // Ensure rate is valid
+  const safeRate = (rate && !isNaN(rate)) ? rate : 85.4;
+  
+  // Format based on display currency
+  let incomeFormatted, expenseFormatted, savingsFormatted;
+  
+  if (dispCur === 'INR') {
+    incomeFormatted = formatINR(income * safeRate);
+    expenseFormatted = formatINR(expense * safeRate);
+    savingsFormatted = formatINR((income - expense) * safeRate);
+  } else {
+    incomeFormatted = formatUSD(income);
+    expenseFormatted = formatUSD(expense);
+    savingsFormatted = formatUSD(income - expense);
+  }
+  
+  return {
+    income: incomeFormatted,
+    expense: expenseFormatted,
+    savings: savingsFormatted,
+    loan: formatINR(loanINR),
+  };
 },
 
-  dashboardMetrics(rows: OverallRow[], dispCur: string, rate: number): DashboardMetrics {
-    let income = 0, expense = 0, loanINR = 0;
-    for (const r of rows) {
-      if (r.type === "Income") income += r.amtUSD;
-      else if (r.type === "Expense") expense += r.amtUSD;
-      else if (r.type === "Loan") loanINR += r.amtINR;
-    }
-    const fmt = (n: number) => dispCur === "INR" ? formatINR(n * rate) : formatUSD(n);
+chartData(rows: OverallRow[]): ChartData {
+  const mmap: Record<string, any> = {};
+  const cmap: Record<string, number> = {};
+  
+  if (!rows || rows.length === 0) {
     return {
-      income: fmt(income),
-      expense: fmt(expense),
-      savings: fmt(income - expense),
-      loan: formatINR(loanINR),
+      bar: [],
+      donut: [],
     };
-  },
-
-  chartData(rows: OverallRow[]): ChartData {
-    const mmap: Record<string, any> = {};
-    const cmap: Record<string, number> = {};
-    for (const r of rows) {
-      const k = r.month || "?";
-      if (!mmap[k]) mmap[k] = { month: k, income: 0, expense: 0 };
-      if (r.type === "Income") mmap[k].income += r.amtUSD;
-      if (r.type === "Expense") mmap[k].expense += r.amtUSD;
-      if (r.type === "Expense") cmap[r.subcategory] = (cmap[r.subcategory] || 0) + r.amtUSD;
+  }
+  
+  for (const r of rows) {
+    // Extract month name for better display
+    let monthDisplay = r.month || "";
+    if (monthDisplay && monthDisplay.length >= 7) {
+      // Convert "2024-01" to "Jan"
+      const monthNum = parseInt(monthDisplay.slice(5, 7));
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      monthDisplay = monthNames[monthNum - 1] || monthDisplay;
     }
-    return {
-      bar: Object.values(mmap).sort((a, b) => a.month.localeCompare(b.month)).slice(-6),
-      donut: Object.entries(cmap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, value]) => ({ name, value })),
-    };
-  },
+    
+    const k = r.month || "";
+    if (k && !mmap[k]) {
+      mmap[k] = { 
+        name: monthDisplay, 
+        income: 0, 
+        expense: 0,
+        month: k 
+      };
+    }
+    if (r.type === "Income") {
+      if (mmap[k]) mmap[k].income += r.amtUSD;
+    }
+    if (r.type === "Expense") {
+      if (mmap[k]) mmap[k].expense += r.amtUSD;
+      cmap[r.subcategory] = (cmap[r.subcategory] || 0) + r.amtUSD;
+    }
+  }
+  
+  let barData = Object.values(mmap);
+  if (barData.length > 0) {
+    barData = barData
+      .sort((a, b) => (a.month || "").localeCompare(b.month || ""))
+      .slice(-6);
+  }
+  
+  let donutData = Object.entries(cmap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, value]) => ({ name, value: Math.round(value) }));
+  
+  if (donutData.length === 0) {
+    donutData = [{ name: 'No Data', value: 1 }];
+  }
+  
+  // If no bar data but we have transactions, create bar data from available months
+  if (barData.length === 0 && rows.length > 0) {
+    const monthSet = new Set<string>();
+    for (const r of rows) {
+      if (r.month) monthSet.add(r.month);
+    }
+    const sortedMonths = Array.from(monthSet).sort();
+    barData = sortedMonths.slice(-6).map(month => {
+      let monthDisplay = month;
+      if (month.length >= 7) {
+        const monthNum = parseInt(month.slice(5, 7));
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        monthDisplay = monthNames[monthNum - 1] || month;
+      }
+      let income = 0, expense = 0;
+      for (const r of rows) {
+        if (r.month === month) {
+          if (r.type === "Income") income += r.amtUSD;
+          if (r.type === "Expense") expense += r.amtUSD;
+        }
+      }
+      return { name: monthDisplay, month, income, expense };
+    });
+  }
+  
+  return {
+    bar: barData,
+    donut: donutData,
+  };
+},
 
   monthlySummary(rows: OverallRow[]): MonthlySummary[] {
+    if (!rows || rows.length === 0) return [];
+    
     const map: Record<string, any> = {};
     for (const r of rows) {
       const k = r.month || "Unknown";
@@ -114,6 +199,8 @@ filterByDate(rows: OverallRow[], from: string, to: string): OverallRow[] {
   },
 
   categorySummary(rows: OverallRow[]): CategorySummary[] {
+    if (!rows || rows.length === 0) return [];
+    
     const map: Record<string, any> = {};
     for (const r of rows) {
       if (!map[r.subcategory]) {
@@ -127,10 +214,10 @@ filterByDate(rows: OverallRow[], from: string, to: string): OverallRow[] {
   },
 
   yearlyComparison(allYearsRows: Record<string, OverallRow[]>): YearlyComparison {
-    const years = Object.keys(allYearsRows).sort();
+    const years = Object.keys(allYearsRows || {}).sort();
     const catMap: Record<string, any> = {};
     for (const y of years) {
-      for (const r of allYearsRows[y]) {
+      for (const r of allYearsRows[y] || []) {
         if (!catMap[r.subcategory]) catMap[r.subcategory] = { name: r.subcategory, type: r.type, years: {} };
         catMap[r.subcategory].years[y] = (catMap[r.subcategory].years[y] || 0) + r.amtUSD;
       }
@@ -139,6 +226,7 @@ filterByDate(rows: OverallRow[], from: string, to: string): OverallRow[] {
   },
 
   tableSummary(rows: any[], fields: Field[]) {
+    if (!rows || !fields) return { count: 0, total: null, currency: null };
     const pf = fields?.find(f => f.isPrimary);
     if (!pf) return { count: rows.length, total: null, currency: null };
     const total = rows.reduce((s, r) => s + (parseFloat(r[pf.id]) || 0), 0);
