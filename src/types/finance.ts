@@ -38,11 +38,65 @@ export interface OverallRow {
   id: string;
   year: number;
   month: string;
+<<<<<<< HEAD
+=======
+  date?: string;
+>>>>>>> eead2da (Small Changes)
   category: string;
   subcategory: string;
   type: 'Expense' | 'Income' | 'Transfer' | 'Loan';
   amtUSD: number;
   amtINR: number;
   categoryId?: string;
+<<<<<<< HEAD
   tableId?: string;
 }
+=======
+  tabId?: string;
+  tableId?: string;
+}
+
+export interface DashboardMetrics {
+  income: string;
+  expense: string;
+  savings: string;
+  loan: string;
+}
+
+export interface ChartData {
+  bar: Array<{
+    name: string;
+    income: number;
+    expense: number;
+    month?: string;
+  }>;
+  donut: Array<{
+    name: string;
+    value: number;
+  }>;
+}
+
+export interface MonthlySummary {
+  month: string;
+  income: number;
+  expense: number;
+  savings: number;
+  biggestCat: string;
+}
+
+export interface CategorySummary {
+  name: string;
+  type: OverallRow['type'];
+  months: Record<string, number>;
+  total: number;
+}
+
+export interface YearlyComparison {
+  years: string[];
+  rows: Array<{
+    name: string;
+    type: OverallRow['type'];
+    years: Record<string, number>;
+  }>;
+}
+>>>>>>> eead2da (Small Changes)

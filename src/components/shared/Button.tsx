@@ -1,33 +1,60 @@
 // src/components/shared/Button.tsx
 import React from 'react';
+<<<<<<< HEAD
 import { Icon } from './Icon';
+=======
+>>>>>>> eead2da (Small Changes)
 import { cn } from '../../lib/utils';
 
 interface ButtonProps {
   children: React.ReactNode;
   onClick?: () => void;
   variant?: 'default' | 'blue' | 'green' | 'red' | 'ghost';
+<<<<<<< HEAD
+=======
+  size?: 'sm' | 'md' | 'lg';
+>>>>>>> eead2da (Small Changes)
   small?: boolean;
   disabled?: boolean;
   style?: React.CSSProperties;
   className?: string;
   loading?: boolean;
+<<<<<<< HEAD
+=======
+  icon?: React.ReactNode;
+>>>>>>> eead2da (Small Changes)
 }
 
 export const Button: React.FC<ButtonProps> = ({ 
   children, 
   onClick, 
   variant = 'default', 
+<<<<<<< HEAD
+=======
+  size = 'md',
+>>>>>>> eead2da (Small Changes)
   small, 
   disabled, 
   style = {},
   className,
+<<<<<<< HEAD
   loading = false
 }) => {
   // Size classes
   const sizeClasses = small 
     ? 'px-3 py-1.5 text-xs gap-1.5' 
     : 'px-4 py-2 text-sm gap-2';
+=======
+  loading = false,
+  icon
+}) => {
+  const effectiveSize = small ? 'sm' : size;
+  const sizeClasses = {
+    sm: 'px-3 py-1.5 text-xs gap-1.5',
+    md: 'px-4 py-2 text-sm gap-2',
+    lg: 'px-5 py-3 text-base gap-2.5',
+  }[effectiveSize];
+>>>>>>> eead2da (Small Changes)
   
   // Variant classes with glass styling
   const variantClasses = {
@@ -38,6 +65,7 @@ export const Button: React.FC<ButtonProps> = ({
     ghost: 'hover:bg-white/5 text-white/50 hover:text-white/80 border-transparent',
   };
 
+<<<<<<< HEAD
   // Icon color mapping
   const iconColor = {
     default: 'currentColor',
@@ -48,6 +76,8 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   // Handle loading state - wrap children with spinner
+=======
+>>>>>>> eead2da (Small Changes)
   const content = loading ? (
     <>
       <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
@@ -57,7 +87,14 @@ export const Button: React.FC<ButtonProps> = ({
       <span>{children}</span>
     </>
   ) : (
+<<<<<<< HEAD
     children
+=======
+    <>
+      {icon}
+      <span>{children}</span>
+    </>
+>>>>>>> eead2da (Small Changes)
   );
 
   return (
@@ -93,4 +130,8 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
+<<<<<<< HEAD
 export default Button;
+=======
+export default Button;
+>>>>>>> eead2da (Small Changes)

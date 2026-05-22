@@ -20,6 +20,10 @@ export interface SkeletonProps {
   height?:    string | number;
   rounded?:   "sm" | "md" | "lg" | "full";
   className?: string;
+<<<<<<< HEAD
+=======
+  style?:     React.CSSProperties;
+>>>>>>> eead2da (Small Changes)
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({
@@ -27,6 +31,10 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   height  = 16,
   rounded = "md",
   className,
+<<<<<<< HEAD
+=======
+  style,
+>>>>>>> eead2da (Small Changes)
 }) => {
   const roundedCls = {
     sm:   "rounded",
@@ -39,7 +47,11 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     <div
       aria-hidden
       className={cn("skeleton", roundedCls, className)}
+<<<<<<< HEAD
       style={{ width, height }}
+=======
+      style={{ width, height, ...style }}
+>>>>>>> eead2da (Small Changes)
     />
   );
 };
@@ -160,4 +172,8 @@ export const SkeletonTable: React.FC<SkeletonTableProps> = ({
   </div>
 );
 
+<<<<<<< HEAD
 export default Skeleton;
+=======
+export default Skeleton;
+>>>>>>> eead2da (Small Changes)

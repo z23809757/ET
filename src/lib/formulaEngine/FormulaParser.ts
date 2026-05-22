@@ -55,8 +55,21 @@ export class FormulaParser {
   
   static validate(formula: string): FormulaValidationResult {
     if (!formula.startsWith('=')) {
+<<<<<<< HEAD
       return { valid: false, error: 'Formula must start with =' };
     }
     return { valid: true };
   }
 }
+=======
+      return { valid: false, isValid: false, error: 'Formula must start with =' };
+    }
+    const parsed = this.parse(formula);
+    return {
+      valid: true,
+      isValid: true,
+      dependencies: parsed.dependencies.map(CellReferenceParser.stringify)
+    };
+  }
+}
+>>>>>>> eead2da (Small Changes)

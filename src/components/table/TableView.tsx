@@ -23,6 +23,10 @@ interface TableViewProps {
 
 const ROW_H = 37;
 const VISIBLE = 25;
+<<<<<<< HEAD
+=======
+type StoredFormula = { display: string; internal: string };
+>>>>>>> eead2da (Small Changes)
 
 export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onAddRow, onEditRow, onDeleteRow }) => {
   const [form, setForm] = useState({});
@@ -31,7 +35,11 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
   const [scrollTop, setScrollTop] = useState(0);
   const [showFormulaBuilder, setShowFormulaBuilder] = useState<{ field: any; rowId: string; currentFormula?: string } | null>(null);
   const [formulaValues, setFormulaValues] = useState<Record<string, Record<string, any>>>({});
+<<<<<<< HEAD
   const [rowFormulas, setRowFormulas] = useState<Record<string, Record<string, string>>>({});
+=======
+  const [rowFormulas, setRowFormulas] = useState<Record<string, Record<string, StoredFormula>>>({});
+>>>>>>> eead2da (Small Changes)
   const [isLoadingFormulas, setIsLoadingFormulas] = useState(true);
   const [mergedFormulaValues, setMergedFormulaValues] = useState<Record<string, any>>({});
 
@@ -185,7 +193,11 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     for (const row of rows) {
       newFormulaValues[row.id] = {};
       for (const field of formulaFields) {
+<<<<<<< HEAD
         const formula = rowFormulas[row.id]?.[field.id];
+=======
+        const formula = rowFormulas[row.id]?.[field.id]?.display;
+>>>>>>> eead2da (Small Changes)
         if (formula) {
           const result = evaluateFormulaForRow(formula, row, table.id);
           newFormulaValues[row.id][field.id] = result;
@@ -423,7 +435,11 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     }
 
     if (f.type === 'Formula') {
+<<<<<<< HEAD
       const formula = rowFormulas[row.id]?.[f.id];
+=======
+      const formula = rowFormulas[row.id]?.[f.id]?.display;
+>>>>>>> eead2da (Small Changes)
       const calculatedValue = formulaValues[row.id]?.[f.id];
 
       if (isLoadingFormulas) {
@@ -492,7 +508,11 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
       await formulaStorageService.saveFormula(table.id, rowId, field.id, formula);
       setRowFormulas(prev => ({
         ...prev,
+<<<<<<< HEAD
         [rowId]: { ...prev[rowId], [field.id]: formula }
+=======
+        [rowId]: { ...prev[rowId], [field.id]: { display: formula, internal: formula } }
+>>>>>>> eead2da (Small Changes)
       }));
       evaluateAllFormulas();
     }
@@ -657,4 +677,8 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
       )}
     </div>
   );
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> eead2da (Small Changes)

@@ -9,9 +9,19 @@ export const formulaFunctions = {
 };
 
 export const evaluateFunction = (functionName: string, args: any[]): any => {
+<<<<<<< HEAD
   const func = formulaFunctions[functionName.toLowerCase() as keyof typeof formulaFunctions];
   if (func) {
     return func(args);
   }
   throw new Error(`Unknown function: ${functionName}`);
 };
+=======
+  const name = functionName.toLowerCase() as keyof typeof formulaFunctions;
+  const func = formulaFunctions[name];
+  if (func) {
+    return name === 'divide' ? formulaFunctions.divide(args[0], args[1]) : (func as (values: any[]) => any)(args);
+  }
+  throw new Error(`Unknown function: ${functionName}`);
+};
+>>>>>>> eead2da (Small Changes)

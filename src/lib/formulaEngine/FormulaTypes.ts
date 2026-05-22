@@ -14,6 +14,10 @@ export interface EvaluationContext {
 
 export interface FormulaFunction {
   name: string;
+<<<<<<< HEAD
+=======
+  description?: string;
+>>>>>>> eead2da (Small Changes)
   minArgs: number;
   maxArgs: number;
   evaluate: (args: any[], context: EvaluationContext) => any;
@@ -22,6 +26,10 @@ export interface FormulaFunction {
 export const FORMULA_FUNCTIONS: FormulaFunction[] = [
   {
     name: 'SUM',
+<<<<<<< HEAD
+=======
+    description: 'Adds numbers together',
+>>>>>>> eead2da (Small Changes)
     minArgs: 1,
     maxArgs: Infinity,
     evaluate: (args) => {
@@ -31,6 +39,10 @@ export const FORMULA_FUNCTIONS: FormulaFunction[] = [
   },
   {
     name: 'AVG',
+<<<<<<< HEAD
+=======
+    description: 'Returns the average value',
+>>>>>>> eead2da (Small Changes)
     minArgs: 1,
     maxArgs: Infinity,
     evaluate: (args) => {
@@ -42,6 +54,10 @@ export const FORMULA_FUNCTIONS: FormulaFunction[] = [
   },
   {
     name: 'COUNT',
+<<<<<<< HEAD
+=======
+    description: 'Counts non-empty values',
+>>>>>>> eead2da (Small Changes)
     minArgs: 1,
     maxArgs: Infinity,
     evaluate: (args) => {
@@ -51,6 +67,10 @@ export const FORMULA_FUNCTIONS: FormulaFunction[] = [
   },
   {
     name: 'MAX',
+<<<<<<< HEAD
+=======
+    description: 'Returns the largest value',
+>>>>>>> eead2da (Small Changes)
     minArgs: 1,
     maxArgs: Infinity,
     evaluate: (args) => {
@@ -61,6 +81,10 @@ export const FORMULA_FUNCTIONS: FormulaFunction[] = [
   },
   {
     name: 'MIN',
+<<<<<<< HEAD
+=======
+    description: 'Returns the smallest value',
+>>>>>>> eead2da (Small Changes)
     minArgs: 1,
     maxArgs: Infinity,
     evaluate: (args) => {
@@ -69,4 +93,8 @@ export const FORMULA_FUNCTIONS: FormulaFunction[] = [
       return Math.min(...flatArgs.map(v => Number(v)));
     }
   }
+<<<<<<< HEAD
 ];
+=======
+];
+>>>>>>> eead2da (Small Changes)

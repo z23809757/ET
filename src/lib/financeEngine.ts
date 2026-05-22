@@ -194,7 +194,11 @@ chartData(rows: OverallRow[]): ChartData {
     return Object.values(map).sort((a, b) => a.month.localeCompare(b.month)).map(r => ({
       ...r,
       savings: r.income - r.expense,
+<<<<<<< HEAD
       biggestCat: Object.entries(r.cats).sort((a, b) => b[1] - a[1])[0]?.[0] || "—",
+=======
+      biggestCat: Object.entries(r.cats as Record<string, number>).sort((a, b) => b[1] - a[1])[0]?.[0] || "—",
+>>>>>>> eead2da (Small Changes)
     }));
   },
 
@@ -232,4 +236,8 @@ chartData(rows: OverallRow[]): ChartData {
     const total = rows.reduce((s, r) => s + (parseFloat(r[pf.id]) || 0), 0);
     return { count: rows.length, total, currency: pf.currency };
   },
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> eead2da (Small Changes)

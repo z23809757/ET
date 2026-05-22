@@ -30,7 +30,10 @@ export function useAuth() {
 
     initializeAuth();
 
+<<<<<<< HEAD
     // Fix: Properly handle the subscription
+=======
+>>>>>>> eead2da (Small Changes)
     const { data } = authService.onAuthStateChange((_event, session) => {
       if (mounted) {
         setUser(session?.user || null);
@@ -38,7 +41,11 @@ export function useAuth() {
       }
     });
     
+<<<<<<< HEAD
     subscription = data;
+=======
+    subscription = data.subscription;
+>>>>>>> eead2da (Small Changes)
 
     return () => {
       mounted = false;
@@ -48,8 +55,13 @@ export function useAuth() {
     };
   }, []);
 
+<<<<<<< HEAD
   const signUp = async (email: string, password: string) => {
     await authService.signUp(email, password);
+=======
+  const signUp = async (email: string, password: string, data?: Record<string, unknown>) => {
+    await authService.signUp(email, password, data);
+>>>>>>> eead2da (Small Changes)
   };
 
   const signIn = async (email: string, password: string) => {
@@ -62,4 +74,8 @@ export function useAuth() {
   };
 
   return { user, loading: loading || !initialized, signUp, signIn, signOut };
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> eead2da (Small Changes)

@@ -12,7 +12,11 @@ export class DependencyTracker {
   addFormula(formula: Formula) {
     const node: DependencyNode = {
       formulaId: formula.id,
+<<<<<<< HEAD
       dependsOn: formula.dependsOn.map(ref => this.referenceToString(ref)),
+=======
+      dependsOn: formula.dependsOn,
+>>>>>>> eead2da (Small Changes)
       dependents: []
     };
     
@@ -108,4 +112,8 @@ export class DependencyTracker {
   }
 }
 
+<<<<<<< HEAD
 export const dependencyTracker = new DependencyTracker();
+=======
+export const dependencyTracker = new DependencyTracker();
+>>>>>>> eead2da (Small Changes)

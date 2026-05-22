@@ -22,7 +22,11 @@
  */
 
 import React from "react";
+<<<<<<< HEAD
 import { motion } from "framer-motion";
+=======
+import { motion, type TargetAndTransition, type Transition } from "framer-motion";
+>>>>>>> eead2da (Small Changes)
 import { EASING } from "../../lib/theme";
 import { cn } from "../../lib/utils";
 
@@ -39,7 +43,11 @@ export interface PageTransitionProps {
 // ─── Variant presets ──────────────────────────────────────────────────────────
 
 const VARIANTS: Record<TransitionStyle, {
+<<<<<<< HEAD
   initial: object; animate: object; exit: object; transition: object;
+=======
+  initial: TargetAndTransition; animate: TargetAndTransition; exit: TargetAndTransition; transition: Transition;
+>>>>>>> eead2da (Small Changes)
 }> = {
   fadeUp: {
     initial:    { opacity: 0, y: 16 },
@@ -89,4 +97,8 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   );
 };
 
+<<<<<<< HEAD
 export default PageTransition;
+=======
+export default PageTransition;
+>>>>>>> eead2da (Small Changes)
