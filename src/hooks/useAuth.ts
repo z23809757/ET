@@ -61,5 +61,22 @@ export function useAuth() {
     setUser(null);
   };
 
-  return { user, loading: loading || !initialized, signUp, signIn, signOut };
+  // Add these two new functions
+  const resetPassword = async (email: string) => {
+    await authService.resetPassword(email);
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    await authService.updatePassword(newPassword);
+  };
+
+  return { 
+    user, 
+    loading: loading || !initialized, 
+    signUp, 
+    signIn, 
+    signOut,
+    resetPassword,    // Add this
+    updatePassword    // Add this
+  };
 }

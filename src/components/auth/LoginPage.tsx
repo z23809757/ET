@@ -106,15 +106,14 @@ export const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Forgot Password Link */}
+              {/* Forgot Password Link - FIXED */}
               <div className="text-right">
-                <button 
-                  type="button"
-                  onClick={() => toast.info('Reset link would be sent to your email')}
+                <Link 
+                  to="/forgot-password"
                   className="text-xs text-white/30 hover:text-accent-gold transition-colors"
                 >
                   Forgot password?
-                </button>
+                </Link>
               </div>
 
               {/* Submit Button */}

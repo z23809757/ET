@@ -7,6 +7,8 @@ import { SignupPage } from './components/auth/SignupPage';
 import { AppShell } from './AppShell';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { LoadingSkeleton } from './components/shared/LoadingSkeleton';
+import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 //import './styles/global.css';
 
 function App() {
@@ -23,6 +25,8 @@ function App() {
         <Routes>
           <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
           <Route path="/signup" element={!user ? <SignupPage /> : <Navigate to="/" />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/*" element={user ? <AppShell /> : <Navigate to="/login" />} />
         </Routes>
       </BrowserRouter>
