@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from '../../shared/Icon';
+import { cn } from '../../../lib/utils';
 
 interface TableSelectorProps {
   tables: string[];
@@ -10,11 +11,12 @@ interface TableSelectorProps {
 export const TableSelector: React.FC<TableSelectorProps> = ({ tables, onSelect, onCancel }) => {
   if (tables.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: 20 }}>
-        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>No tables found</div>
+      <div className="text-center py-8">
+        <Icon n="ti-table-off" size={32} className="mx-auto mb-2 opacity-50" />
+        <div className="text-sm text-white/40">No tables found</div>
         <button 
           onClick={onCancel}
-          style={{ marginTop: 12, padding: '4px 12px', fontSize: 11, cursor: 'pointer' }}
+          className="mt-3 px-3 py-1.5 rounded-lg text-xs bg-white/5 hover:bg-white/10 text-white/60 hover:text-white/80 transition-all"
         >
           Close
         </button>
@@ -23,31 +25,29 @@ export const TableSelector: React.FC<TableSelectorProps> = ({ tables, onSelect, 
   }
   
   return (
-    <div>
-      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+    <div className="space-y-2">
+      <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">
         Select Table
       </div>
-      {tables.map(table => (
-        <div
-          key={table}
-          onClick={() => onSelect(table)}
-          style={{
-            padding: '8px 10px',
-            cursor: 'pointer',
-            borderRadius: 6,
-            fontSize: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            borderBottom: '0.5px solid var(--color-border-tertiary)'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-background-secondary)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-        >
-          <Icon n="ti-table" size={14} color="#185FA5" />
-          <span>{table}</span>
-        </div>
-      ))}
+      <div className="space-y-1 max-h-64 overflow-y-auto">
+        {tables.map(table => (
+          <button
+            key={table}
+            onClick={() => onSelect(table)}
+            className="w-full text-left px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all flex items-center gap-2 group"
+          >
+            <Icon n="ti-table" size={14} className="text-accent-cyan group-hover:text-accent-gold" />
+            <span className="text-sm text-white/80 flex-1">{table}</span>
+            <Icon n="ti-chevron-right" size={12} className="text-white/30 group-hover:text-accent-gold transition-all" />
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={onCancel}
+        className="w-full text-center px-3 py-2 rounded-lg text-sm text-white/40 hover:text-white/60 transition-all mt-2"
+      >
+        Cancel
+      </button>
     </div>
   );
 };

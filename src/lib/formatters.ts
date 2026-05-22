@@ -46,6 +46,8 @@ export const toUsdInr = (amount: any, currency: string | undefined, rate: number
   return { usd: numAmount, inr: numAmount * safeRate };
 };
 
+// src/lib/formatters.ts
+
 export const formatField = (
   value: any,
   currency: string | undefined,
@@ -57,7 +59,12 @@ export const formatField = (
   if (typeof value === 'number') {
     numValue = isNaN(value) ? 0 : value;
   } else if (typeof value === 'string') {
-    numValue = parseFloat(value) || 0;
+    // Try to parse the string
+    const parsed = parseFloat(value);
+    numValue = isNaN(parsed) ? 0 : parsed;
+  } else if (value && typeof value === 'object') {
+    // Handle object values (like from merged cells)
+    numValue = value.value || 0;
   } else {
     numValue = 0;
   }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon } from '../../shared/Icon';
 import { CellReference } from '../../../types/formula';
+import { cn } from '../../../lib/utils';
 
 interface FieldSelectorProps {
   fields: CellReference[];
@@ -13,47 +14,72 @@ export const FieldSelector: React.FC<FieldSelectorProps> = ({ fields, tableName,
   if (fields.length === 0) {
     return (
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Icon n="ti-chevron-left" size={14} style={{ cursor: 'pointer' }} onClick={onBack} />
-          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>Back to Tables</span>
-        </div>
-        <div style={{ textAlign: 'center', padding: 20, color: 'var(--color-text-tertiary)' }}>
-          No fields found in this table
+        <button
+          onClick={onBack}
+          className="text-xs text-accent-cyan hover:text-accent-gold mb-4 flex items-center gap-1"
+        >
+          <Icon n="ti-chevron-left" size={12} /> Back to tables
+        </button>
+        <div className="text-center py-8 text-white/40">
+          <Icon n="ti-chart-bar" size={32} className="mx-auto mb-2 opacity-50" />
+          <div className="text-sm">No fields found</div>
+          <div className="text-xs mt-1">This table has no editable fields</div>
         </div>
       </div>
     );
   }
   
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <Icon n="ti-chevron-left" size={14} style={{ cursor: 'pointer' }} onClick={onBack} />
-        <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{tableName}</span>
-        <Icon n="ti-chevron-right" size={12} color="var(--color-text-tertiary)" />
-        <span style={{ fontSize: 11, fontWeight: 500 }}>Select Field</span>
-      </div>
-      {fields.map(field => (
-        <div
-          key={field.fieldName}
-          onClick={() => onSelect(field.fieldName)}
-          style={{
-            padding: '8px 10px',
-            cursor: 'pointer',
-            borderRadius: 6,
-            fontSize: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            borderBottom: '0.5px solid var(--color-border-tertiary)'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-background-secondary)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+    <div className="space-y-3">
+      {/* Breadcrumb navigation */}
+      <div className="flex items-center gap-2 text-xs">
+        <button
+          onClick={onBack}
+          className="text-accent-cyan hover:text-accent-gold transition-colors flex items-center gap-1"
         >
-          <Icon n={field.isRange ? "ti-chart-bar" : "ti-text-fields"} size={12} color={field.isRange ? "#1D9E75" : "#185FA5"} />
-          <span>{field.fieldName}</span>
-          {field.isRange && <span style={{ fontSize: 9, color: '#1D9E75', marginLeft: 'auto' }}>All rows</span>}
-        </div>
-      ))}
+          <Icon n="ti-chevron-left" size={12} />
+          <span>Tables</span>
+        </button>
+        <Icon n="ti-chevron-right" size={10} className="text-white/30" />
+        <span className="text-white/50">{tableName}</span>
+        <Icon n="ti-chevron-right" size={10} className="text-white/30" />
+        <span className="text-white/80 font-medium">Select Field</span>
+      </div>
+      
+      <div className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+        Available Fields
+      </div>
+      
+      <div className="space-y-1 max-h-64 overflow-y-auto">
+        {fields.map(field => (
+          <button
+            key={field.fieldName}
+            onClick={() => onSelect(field.fieldName)}
+            className={cn(
+              "w-full text-left px-3 py-2 rounded-lg transition-all flex items-center gap-2 group",
+              field.isRange 
+                ? "bg-gradient-emerald-cyan/10 hover:bg-gradient-emerald-cyan/20 border border-accent-emerald/20" 
+                : "bg-white/5 hover:bg-white/10"
+            )}
+          >
+            <Icon 
+              n={field.isRange ? "ti-chart-bar" : "ti-text-fields"} 
+              size={14} 
+              className={field.isRange ? "text-accent-emerald" : "text-accent-cyan group-hover:text-accent-gold"} 
+            />
+            <span className="text-sm text-white/80 flex-1">{field.fieldName}</span>
+            <span className="text-2xs text-white/30 mr-2">
+              ({field.fieldType || 'Text'})
+            </span>
+            {field.isRange && (
+              <span className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-emerald/20 text-accent-emerald">
+                All rows
+              </span>
+            )}
+            <Icon n="ti-chevron-right" size={12} className="text-white/30 group-hover:text-accent-gold transition-all" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

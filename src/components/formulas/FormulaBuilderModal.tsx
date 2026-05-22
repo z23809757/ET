@@ -9,6 +9,7 @@ import { useFinanceStore } from '../../hooks/useFinanceStore';
 import { useCellReferences } from '../../hooks/useCellReferences';
 import { CellReference } from '../../types/formula';
 import { formatField } from '../../lib/formatters';
+import { cn } from '../../lib/utils';
 
 interface MergedCell {
   id: string;
@@ -42,9 +43,11 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
   const [previewValue, setPreviewValue] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [calculating, setCalculating] = useState(false);
+  const [showReferencePicker, setShowReferencePicker] = useState(false);
+  const [showFunctions, setShowFunctions] = useState(false);
   
   const { state } = useFinanceStore();
-  const { availableReferences, getReferenceString } = useCellReferences();
+  const { availableReferences=[], getReferenceString } = useCellReferences();
 
   // Resolve a merged cell value for preview — handles nested ROW_/MERGE_ formulas
   const resolveMergedValue = useCallback((merge: MergedCell): number => {
@@ -179,6 +182,7 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
     
     setFormula(newFormula);
     await updatePreview(newFormula);
+    setShowReferencePicker(false);
   }, [formula, merges, updatePreview]);
 
   const handleAddNumber = useCallback((num: string) => {
@@ -197,6 +201,7 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
     const newFormula = formula + functionName + '(';
     setFormula(newFormula);
     updatePreview(newFormula);
+    setShowFunctions(false);
   }, [formula, updatePreview]);
 
   const handleClear = () => {
@@ -219,150 +224,144 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
     : previewValue;
 
   return (
-    <Modal title={`Formula Builder${fieldName ? ` - ${fieldName}` : ''}`} icon="ti-calculator" onClose={onClose} width={700}>
-      <div style={{ marginBottom: 20, background: 'var(--color-background-secondary)', borderRadius: 8, padding: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-tertiary)', marginBottom: 4 }}>
-          Formula Preview
-        </div>
-        <div style={{
-          background: 'var(--color-background-primary)',
-          border: '0.5px solid var(--color-border-secondary)',
-          borderRadius: 6,
-          padding: '10px 12px',
-          fontFamily: 'monospace',
-          fontSize: 13,
-          marginBottom: 8,
-          wordBreak: 'break-all'
-        }}>
-          {formula}
-        </div>
-        {calculating ? (
-          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>Calculating...</div>
-        ) : error ? (
-          <div style={{ fontSize: 12, color: '#D85A30' }}>
-            <Icon n="ti-alert-triangle" size={12} /> {error}
+    <Modal title={`Formula Builder${fieldName ? ` - ${fieldName}` : ''}`} icon="ti-calculator" onClose={onClose} width={750}>
+      <div className="space-y-5">
+        {/* Formula Preview Section */}
+        <div className="bg-white/5 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+              Formula Preview
+            </label>
+            {calculating && (
+              <span className="text-2xs text-white/30">Calculating...</span>
+            )}
           </div>
-        ) : previewValue !== null ? (
-          <div style={{ fontSize: 12, color: '#1D9E75' }}>
-            <Icon n="ti-check" size={12} /> Result: {formattedPreview}
+          <div className="bg-navy-800/50 border border-white/10 rounded-lg p-3 font-mono text-sm text-white/90 break-all min-h-[60px]">
+            {formula}
           </div>
-        ) : null}
-      </div>
+          {error ? (
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-coral-400">
+              <Icon n="ti-alert-triangle" size={12} />
+              <span>{error}</span>
+            </div>
+          ) : previewValue !== null ? (
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-400">
+              <Icon n="ti-check" size={12} />
+              <span>Result: {formattedPreview}</span>
+            </div>
+          ) : null}
+        </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-          Build Formula
-        </div>
-        
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-          <ReferencePicker references={availableReferences} onSelect={handleAddReference} />
-          <FunctionDropdown onSelect={handleAddFunction} />
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.'].map(num => (
-              <Button key={num} variant="default" small onClick={() => handleAddNumber(num)}>{num}</Button>
+        {/* Build Formula Section */}
+        <div>
+          <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
+            Build Formula
+          </label>
+          
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => setShowReferencePicker(!showReferencePicker)}
+              className="px-3 py-1.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-all flex items-center gap-1.5"
+            >
+              <Icon n="ti-plus" size={12} />
+              Add Reference
+            </button>
+            
+            <div className="relative">
+              <button
+                onClick={() => setShowFunctions(!showFunctions)}
+                className="px-3 py-1.5 rounded-lg text-sm bg-white/5 hover:bg-white/10 text-white/70 hover:text-white/90 transition-all flex items-center gap-1.5"
+              >
+                <Icon n="ti-function" size={12} />
+                Functions ▼
+              </button>
+              {showFunctions && (
+                <div className="absolute top-full left-0 mt-1 z-20">
+                  <FunctionDropdown onSelect={handleAddFunction} onClose={() => setShowFunctions(false)} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Number Pad */}
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            {['7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', '0', '.', '=', '+'].map(btn => (
+              <button
+                key={btn}
+                onClick={() => btn === '=' ? handleSave() : (btn === '+' || btn === '-' || btn === '*' || btn === '/') ? handleAddOperator(btn) : handleAddNumber(btn)}
+                className={cn(
+                  "py-2 rounded-lg text-sm font-medium transition-all",
+                  btn === '=' 
+                    ? "bg-gradient-emerald-cyan text-white col-span-2" 
+                    : "bg-white/5 hover:bg-white/10 text-white/70 hover:text-white/90"
+                )}
+              >
+                {btn}
+              </button>
             ))}
           </div>
-        </div>
-        
-        <div style={{
-          background: 'var(--color-background-secondary)',
-          border: '0.5px solid var(--color-border-secondary)',
-          borderRadius: 8,
-          padding: '10px 12px',
-          minHeight: 60,
-          fontFamily: 'monospace',
-          fontSize: 13,
-          marginBottom: 12
-        }}>
-          {formula}
-        </div>
-        
-        <OperatorButtons onOperatorClick={handleAddOperator} />
-        
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-          <Button variant="ghost" small onClick={handleClear}>
-            <Icon n="ti-trash" size={12} /> Clear
-          </Button>
-        </div>
-      </div>
 
-      <div style={{
-        background: 'var(--color-background-secondary)',
-        borderRadius: 8,
-        padding: 12,
-        maxHeight: 250,
-        overflowY: 'auto'
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-tertiary)', marginBottom: 8 }}>
-          Available References (Click to add)
-        </div>
-        
-        {availableReferences.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 20, color: 'var(--color-text-tertiary)' }}>
-            No tables with data yet.
+          {/* Parentheses and Clear */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => handleAddNumber('(')}
+              className="flex-1 py-2 rounded-lg text-sm bg-white/5 hover:bg-white/10 text-white/70 transition-all"
+            >
+              ( )
+            </button>
+            <button
+              onClick={() => handleAddNumber(')')}
+              className="flex-1 py-2 rounded-lg text-sm bg-white/5 hover:bg-white/10 text-white/70 transition-all"
+            >
+              ) (
+            </button>
+            <button
+              onClick={handleClear}
+              className="flex-1 py-2 rounded-lg text-sm bg-coral-500/20 hover:bg-coral-500/30 text-coral-400 transition-all"
+            >
+              Clear
+            </button>
           </div>
-        ) : (
-          Object.entries(
-            availableReferences.reduce((groups, ref) => {
-              if (!groups[ref.tableName]) groups[ref.tableName] = [];
-              groups[ref.tableName].push(ref);
-              return groups;
-            }, {} as Record<string, typeof availableReferences>)
-          ).map(([tableName, refs]) => (
-            <div key={tableName} style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 6 }}>
-                📊 {tableName}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {refs.slice(0, 20).map((ref, idx) => {
-                  const isMerged = merges.some(m =>
-                    m.table_id === ref.tableId &&
-                    m.start_row_id === ref.rowId &&
-                    m.start_col_id === ref.fieldId
-                  );
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handleAddReference(ref)}
-                      style={{
-                        padding: '4px 10px',
-                        fontSize: 11,
-                        background: 'var(--color-background-primary)',
-                        border: '0.5px solid var(--color-border-secondary)',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        transition: 'all 0.15s',
-                        backgroundColor: isMerged ? '#EAF3DE' : 'transparent'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--color-background-secondary)';
-                        e.currentTarget.style.borderColor = '#185FA5';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = isMerged ? '#EAF3DE' : 'var(--color-background-primary)';
-                        e.currentTarget.style.border = '0.5px solid var(--color-border-secondary)';
-                      }}
-                    >
-                      <Icon n={isMerged ? "ti-merge-cells" : "ti-chart-bar"} size={10} color={isMerged ? "#1D9E75" : "#185FA5"} />
-                      <span>{ref.fieldName}</span>
-                      {ref.rowLabel && <span style={{ fontSize: 9, color: 'var(--color-text-tertiary)' }}>({ref.rowLabel})</span>}
-                      {isMerged && <span style={{ fontSize: 8, color: '#1D9E75' }}> merged</span>}
-                    </button>
-                  );
-                })}
-              </div>
+        </div>
+
+        {/* Reference Picker - Collapsible */}
+        {showReferencePicker && (
+          <div className="border-t border-white/10 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                Select Reference
+              </label>
+              <button
+                onClick={() => setShowReferencePicker(false)}
+                className="text-white/40 hover:text-white/60"
+              >
+                <Icon n="ti-x" size={14} />
+              </button>
             </div>
-          ))
+            <ReferencePicker 
+            references={availableReferences || []}
+              tableId={tableId}
+              merges={merges}
+              onSelect={handleAddReference}
+              onCancel={() => setShowReferencePicker(false)}
+            />
+          </div>
         )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20, paddingTop: 14, borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="blue" onClick={handleSave} disabled={!!error || formula === '='}>
-          <Icon n="ti-check" size={13} /> Save Formula
+      {/* Footer Buttons */}
+      <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
+        <Button variant="ghost" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button 
+          variant="blue" 
+          onClick={handleSave}
+          disabled={!!error || formula === '='}
+          icon={<Icon n="ti-check" size={13} />}
+        >
+          Save Formula
         </Button>
       </div>
     </Modal>
