@@ -1,21 +1,7 @@
-/**
- * src/components/ui/GlassPanel.tsx
- *
- * A flexible glass container for sections, modals, and sidebars.
- * Provides header / footer slots, padding control, and an optional
- * divider between header and body.
- *
- * Use GlassCard for individual metric/data cards.
- * Use GlassPanel for larger layout regions (table containers, modals, drawers).
- */
 
 import React from "react";
 import { motion } from "framer-motion";
-<<<<<<< HEAD
 import { MOTION, COLORS } from "../../lib/theme";
-=======
-import { MOTION } from "../../lib/theme";
->>>>>>> eead2da (Small Changes)
 import { cn } from "../../lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -29,10 +15,6 @@ export interface GlassPanelProps {
   /** Slot rendered below the content with a divider */
   footer?:        React.ReactNode;
   depth?:         GlassPanelDepth;
-<<<<<<< HEAD
-=======
-  variant?:       GlassPanelDepth;
->>>>>>> eead2da (Small Changes)
   /** Disable entry animation */
   static?:        boolean;
   /** Override border-radius (default: rounded-2xl) */
@@ -67,12 +49,7 @@ export const GlassPanel: React.FC<GlassPanelProps> = ({
   children,
   header,
   footer,
-<<<<<<< HEAD
   depth         = "default",
-=======
-  depth,
-  variant,
->>>>>>> eead2da (Small Changes)
   static:       isStatic = false,
   radius        = "2xl",
   flush         = false,
@@ -81,10 +58,6 @@ export const GlassPanel: React.FC<GlassPanelProps> = ({
   bodyClassName,
   footerClassName,
 }) => {
-<<<<<<< HEAD
-=======
-  const panelDepth = depth ?? variant ?? "default";
->>>>>>> eead2da (Small Changes)
   const Wrapper = isStatic ? "div" : motion.div;
   const motionProps = isStatic
     ? {}
@@ -95,11 +68,7 @@ export const GlassPanel: React.FC<GlassPanelProps> = ({
       {...(motionProps as any)}
       className={cn(
         "relative isolate overflow-hidden",
-<<<<<<< HEAD
         DEPTH_CLS[depth],
-=======
-        DEPTH_CLS[panelDepth],
->>>>>>> eead2da (Small Changes)
         RADIUS_CLS[radius],
         className,
       )}
@@ -156,8 +125,4 @@ export const GlassPanel: React.FC<GlassPanelProps> = ({
   );
 };
 
-<<<<<<< HEAD
 export default GlassPanel;
-=======
-export default GlassPanel;
->>>>>>> eead2da (Small Changes)

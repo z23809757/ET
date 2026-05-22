@@ -110,11 +110,7 @@ export const LoginPage: React.FC = () => {
               <div className="text-right">
                 <button 
                   type="button"
-<<<<<<< HEAD
                   onClick={() => toast.info('Reset link would be sent to your email')}
-=======
-                  onClick={() => toast('Reset link would be sent to your email')}
->>>>>>> eead2da (Small Changes)
                   className="text-xs text-white/30 hover:text-accent-gold transition-colors"
                 >
                   Forgot password?
@@ -158,8 +154,4 @@ export const LoginPage: React.FC = () => {
       </div>
     </AnimeBackground>
   );
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> eead2da (Small Changes)

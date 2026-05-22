@@ -1,32 +1,6 @@
-/**
- * src/components/ui/PageTransition.tsx
- *
- * Wraps each "page" (view) with a Framer Motion animated container.
- * Use inside AnimatePresence in App.tsx/AppShell.tsx.
- *
- * The key prop must change between views so AnimatePresence knows to
- * animate the exit of the old view before mounting the new one.
- *
- * Usage in AppShell.tsx:
- *
- *   import { AnimatePresence } from "framer-motion";
- *   import PageTransition from "../ui/PageTransition";
- *
- *   <AnimatePresence mode="wait">
- *     <PageTransition key={activeView}>
- *       {activeView === "dashboard" && <DashboardView ... />}
- *       {activeView === "overall"   && <OverallView   ... />}
- *       ...
- *     </PageTransition>
- *   </AnimatePresence>
- */
 
 import React from "react";
-<<<<<<< HEAD
 import { motion } from "framer-motion";
-=======
-import { motion, type TargetAndTransition, type Transition } from "framer-motion";
->>>>>>> eead2da (Small Changes)
 import { EASING } from "../../lib/theme";
 import { cn } from "../../lib/utils";
 
@@ -43,11 +17,7 @@ export interface PageTransitionProps {
 // ─── Variant presets ──────────────────────────────────────────────────────────
 
 const VARIANTS: Record<TransitionStyle, {
-<<<<<<< HEAD
   initial: object; animate: object; exit: object; transition: object;
-=======
-  initial: TargetAndTransition; animate: TargetAndTransition; exit: TargetAndTransition; transition: Transition;
->>>>>>> eead2da (Small Changes)
 }> = {
   fadeUp: {
     initial:    { opacity: 0, y: 16 },
@@ -97,8 +67,4 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   );
 };
 
-<<<<<<< HEAD
 export default PageTransition;
-=======
-export default PageTransition;
->>>>>>> eead2da (Small Changes)

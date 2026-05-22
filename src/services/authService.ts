@@ -1,18 +1,10 @@
 import { supabase } from '../lib/supabase';
 
 export const authService = {
-<<<<<<< HEAD
   async signUp(email: string, password: string) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-=======
-  async signUp(email: string, password: string, metadata?: Record<string, unknown>) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: metadata ? { data: metadata } : undefined,
->>>>>>> eead2da (Small Changes)
     });
     if (error) throw error;
     return data;
@@ -41,8 +33,4 @@ export const authService = {
   onAuthStateChange(callback: (event: string, session: any) => void) {
     return supabase.auth.onAuthStateChange(callback);
   },
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> eead2da (Small Changes)

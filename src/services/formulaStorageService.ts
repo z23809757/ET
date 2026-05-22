@@ -8,22 +8,11 @@ export const formulaStorageService = {
     rowId: string,
     fieldId: string,
     displayFormula: string,
-<<<<<<< HEAD
     getReferenceInfo: any,
     getReferenceDisplay: any
   ): Promise<void> {
     // Normalize the formula to internal representation
     const { internalFormula, dependsOn } = normalizeFormula(displayFormula, getReferenceInfo);
-=======
-    getReferenceInfo: any = undefined,
-    getReferenceDisplay: any = undefined
-  ): Promise<void> {
-    // Normalize the formula to internal representation
-    const { internalFormula, dependsOn } = normalizeFormula(
-      displayFormula,
-      getReferenceInfo ?? (() => null)
-    );
->>>>>>> eead2da (Small Changes)
     
     const { error } = await supabase
       .from('row_formulas')
@@ -80,8 +69,4 @@ export const formulaStorageService = {
     
     if (error) throw error;
   }
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> eead2da (Small Changes)
