@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/shared/Sidebar';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { OverallView } from './components/overall/OverallView';
@@ -17,13 +17,24 @@ import { formatUSD, formatINR } from './lib/formatters';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { AnimatePresence } from 'framer-motion';
-import { Menu } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { AnimeBackground } from './components/ui/AnimeBackground';
 
 export const AppShell: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showGlobalTableModal, setShowGlobalTableModal] = useState(false);
   const [showRegularTableModal, setShowRegularTableModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detect mobile screen
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   const {
     state,
@@ -67,7 +78,6 @@ export const AppShell: React.FC = () => {
   const currentTabs = activeYearId ? tabsByYear[activeYearId] || [] : [];
   const currentTab = currentTabs.find(t => t.id === activeTabId);
   
-  // Find current table - check both regular tables and global tables
   let currentTable = null;
   if (activeTableId) {
     for (const yearId in tabsByYear) {
@@ -124,7 +134,6 @@ export const AppShell: React.FC = () => {
     toast.success('Backup exported');
   };
 
-  // Get background variant based on active view
   const getBackgroundVariant = () => {
     switch (activeView) {
       case 'dashboard': return 'dashboard';
@@ -137,7 +146,6 @@ export const AppShell: React.FC = () => {
     }
   };
 
-  // Navigation handler - closes sidebar after navigation
   const handleNavigate = (view: string, yearId: string | null, tabId?: string | null, tableId?: string | null) => {
     const year = years.find(y => y.id === yearId);
     if (yearId) {
@@ -149,11 +157,8 @@ export const AppShell: React.FC = () => {
     setSidebarOpen(false);
   };
 
-  // Separate handler for year toggle (does NOT close sidebar)
   const handleToggleYear = (yearId: string) => {
     dispatch({ type: 'TOGGLE_YEAR_EXPANDED', yearId });
-    // Also switch the active year so the dashboard context updates,
-    // but do NOT close the sidebar
     const year = years.find(y => y.id === yearId);
     if (year) {
       dispatch({ type: 'SET_ACTIVE_YEAR', yearId, year: year.year });
@@ -201,60 +206,69 @@ export const AppShell: React.FC = () => {
           )}
         </AnimatePresence>
 
-        <div style={{ ...S.main, marginLeft: 0 }} className="flex-1 flex flex-col overflow-hidden">
-          {/* Topbar with Menu Button */}
-          <div style={S.topbar}>
-            <div style={S.topLeft}>
+        {/* Main Content - Responsive */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Responsive Topbar */}
+          <div className="flex items-center justify-between px-2 md:px-4 py-2 bg-white/5 backdrop-blur-sm border-b border-white/10">
+            <div className="flex items-center gap-1 md:gap-2 min-w-0">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-1.5 rounded-lg text-white/60 hover:text-white/90 hover:bg-white/5 transition-all"
+                className="p-1.5 md:p-2 rounded-lg text-white/60 hover:text-white/90 hover:bg-white/5 transition-all flex-shrink-0"
               >
-                <Menu size={18} />
+                <Menu size={isMobile ? 18 : 20} />
               </button>
-              {activeView === 'dashboard' && (
-                <><Icon n="ti-layout-dashboard" size={15} color="var(--color-text-tertiary)" />Dashboard</>
-              )}
-              {activeView === 'allyears' && (
-                <><Icon n="ti-chart-bar" size={15} color="#1D9E75" />All Years Overview</>
-              )}
-              {activeView === 'overall' && (
-                <><Icon n="ti-table-alias" size={15} color="var(--color-text-tertiary)" />Overall — {activeYear}</>
-              )}
-              {activeView === 'tab' && currentTab && (
-                <><Icon n={currentTab.icon || 'ti-folder'} size={15} color="var(--color-text-tertiary)" />{currentTab.name} — {activeYear}</>
-              )}
-              {activeView === 'table' && currentTable && (
-                <><Icon n={currentTable.is_global ? "ti-database" : "ti-table"} size={15} color="var(--color-text-tertiary)" />{currentTable.name} {currentTable.is_global && <span style={{ fontSize: 11, marginLeft: 6, color: '#185FA5' }}>(Global)</span>}</>
-              )}
+              <span className="text-sm md:text-base font-medium text-white/80 truncate">
+                {activeView === 'dashboard' && 'Dashboard'}
+                {activeView === 'allyears' && 'All Years'}
+                {activeView === 'overall' && `Overall — ${activeYear}`}
+                {activeView === 'tab' && currentTab?.name}
+                {activeView === 'table' && currentTable?.name}
+                {activeView === 'table' && currentTable?.is_global && (
+                  <span className="text-xs text-accent-cyan ml-1">(Global)</span>
+                )}
+              </span>
             </div>
-            <div style={S.topRight}>
-              {activeView !== 'table' && (
-                <>
-                  {activeView === 'dashboard' && (
-                    <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>
-                  )}
-                  {activeView === 'allyears' && (
-                    <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export All</Button>
-                  )}
-                  {activeView === 'overall' && (
-                    <Button variant="green" small onClick={handleExport}><Icon n="ti-file-spreadsheet" size={12} />Export</Button>
-                  )}
-                  {activeView === 'tab' && currentTab && (
-                    <Button variant="blue" small onClick={() => setShowRegularTableModal(true)}>
-                      <Icon n="ti-plus" size={12} />Add table
-                    </Button>
-                  )}
-                </>
+            
+            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+              {activeView !== 'table' && activeView === 'tab' && currentTab && (
+                <Button 
+                  variant="blue" 
+                  small 
+                  onClick={() => setShowRegularTableModal(true)}
+                  className="text-xs md:text-sm px-2 md:px-3"
+                >
+                  <Icon n="ti-plus" size={isMobile ? 10 : 12} />
+                  <span className="hidden xs:inline">Add</span>
+                </Button>
               )}
-              {activeView === 'table' && currentTable && (
-                <Button variant="default" small onClick={handleExport}><Icon n="ti-download" size={12} />Export</Button>
+              
+              {(activeView === 'dashboard' || activeView === 'overall' || activeView === 'allyears') && (
+                <Button 
+                  variant="green" 
+                  small 
+                  onClick={handleExport}
+                  className="text-xs md:text-sm px-2 md:px-3"
+                >
+                  <Icon n="ti-file-spreadsheet" size={isMobile ? 10 : 12} />
+                  <span className="hidden xs:inline">Export</span>
+                </Button>
               )}
-              <Button variant="default" small onClick={handleBackupExport}><Icon n="ti-download" size={12} />Backup</Button>
+              
+              <Button 
+                variant="default" 
+                small 
+                onClick={handleBackupExport}
+                className="text-xs md:text-sm px-2 md:px-3"
+              >
+                <Icon n="ti-download" size={isMobile ? 10 : 12} />
+                <span className="hidden xs:inline">Backup</span>
+              </Button>
+              
               <RatePill rate={settings.exchangeRate} onRateUpdate={updateRate} />
             </div>
           </div>
 
-          {/* Rest of the content */}
+          {/* Scrollable Content - Responsive padding */}
           <div className="flex-1 overflow-auto">
             {activeView === 'dashboard' && (
               <DashboardView
@@ -286,7 +300,7 @@ export const AppShell: React.FC = () => {
             )}
 
             {activeView === 'tab' && currentTab && (
-              <div style={S.content}>
+              <div className="p-2 md:p-4">
                 {(!currentTab.tables || currentTab.tables.length === 0) ? (
                   <EmptyState
                     icon="ti-layout-grid"
@@ -299,43 +313,54 @@ export const AppShell: React.FC = () => {
                     ]}
                   />
                 ) : (
-                  <div style={S.tablesGrid}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
                     {currentTab.tables.map(tbl => {
                       const trows = rowsByTable[tbl.id] || [];
                       const summary = FE.tableSummary(trows, tbl.fields);
                       const tc = TYPE_C[tbl.type] || TYPE_C.None;
                       return (
-                        <div key={tbl.id} style={S.tableCard}>
-                          <div style={{ width: 32, height: 32, borderRadius: 8, background: tc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                            <Icon n={TYPE_ICON[tbl.type] || 'ti-table'} size={16} color={tc.text} />
+                        <div key={tbl.id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 md:p-4 hover:bg-white/10 transition-all cursor-pointer">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: tc.bg }}>
+                              <Icon n={TYPE_ICON[tbl.type] || 'ti-table'} size={16} color={tc.text} />
+                            </div>
+                            <h3 className="font-medium text-white/90 text-sm md:text-base truncate flex-1">{tbl.name}</h3>
                           </div>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 3 }}>{tbl.name}</div>
-                          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 7 }}>
+                          <p className="text-2xs md:text-xs text-white/50 mb-2">
                             {summary.count} entr{summary.count === 1 ? 'y' : 'ies'}
-                            {summary.total != null && summary.total > 0 && <> · {summary.currency === 'INR' ? formatINR(summary.total) : formatUSD(summary.total)}</>}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                            <span
+                            {summary.total != null && summary.total > 0 && (
+                              <> · {summary.currency === 'INR' ? formatINR(summary.total) : formatUSD(summary.total)}</>
+                            )}
+                          </p>
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/10">
+                            <button
                               onClick={() => {
                                 dispatch({ type: 'SET_ACTIVE_TABLE', tableId: tbl.id });
                                 dispatch({ type: 'SET_ACTIVE_VIEW', view: 'table' });
-                                setSidebarOpen(false);
+                                if (isMobile) setSidebarOpen(false);
                               }}
-                              style={{ fontSize: 11, color: '#185FA5', cursor: 'pointer' }}
+                              className="text-xs text-accent-cyan hover:text-accent-gold transition-colors"
                             >
-                              View table →
-                            </span>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <Icon n="ti-edit" size={13} color="#185FA5" style={{ cursor: 'pointer' }} onClick={() => dispatch({ type: 'SET_MODAL', modal: { kind: 'editTable', tabId: currentTab.id, table: tbl } })} />
-                              <Icon n="ti-trash" size={13} color="#D85A30" style={{ cursor: 'pointer' }} onClick={() => dispatch({ type: 'SET_DELETE_TARGET', target: { type: 'table', tabId: currentTab.id, tableId: tbl.id, name: tbl.name, count: trows.length } })} />
+                              View →
+                            </button>
+                            <div className="flex gap-2">
+                              <button onClick={() => dispatch({ type: 'SET_MODAL', modal: { kind: 'editTable', tabId: currentTab.id, table: tbl } })}>
+                                <Icon n="ti-edit" size={14} color="#06B6D4" />
+                              </button>
+                              <button onClick={() => dispatch({ type: 'SET_DELETE_TARGET', target: { type: 'table', tabId: currentTab.id, tableId: tbl.id, name: tbl.name, count: trows.length } })}>
+                                <Icon n="ti-trash" size={14} color="#F43F5E" />
+                              </button>
                             </div>
                           </div>
                         </div>
                       );
                     })}
-                    <div style={S.addCard} onClick={() => setShowRegularTableModal(true)}>
-                      <Icon n="ti-plus" size={22} color="var(--color-text-tertiary)" />
-                      <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>Add new table</div>
+                    <div 
+                      onClick={() => setShowRegularTableModal(true)}
+                      className="border border-dashed border-white/20 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-white/5 transition-all"
+                    >
+                      <Icon n="ti-plus" size={24} color="var(--color-text-tertiary)" />
+                      <span className="text-xs text-white/50">Add new table</span>
                     </div>
                   </div>
                 )}
@@ -455,10 +480,15 @@ export const AppShell: React.FC = () => {
   );
 };
 
-// RatePill component
+// RatePill component - Responsive version
 const RatePill: React.FC<{ rate: number; onRateUpdate: (rate: number) => void }> = ({ rate, onRateUpdate }) => {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(String(rate));
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+  }, []);
 
   const save = () => {
     const n = parseFloat(val);
@@ -468,29 +498,36 @@ const RatePill: React.FC<{ rate: number; onRateUpdate: (rate: number) => void }>
 
   if (editing) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", border: "0.5px solid #B5D4F4", borderRadius: 8, background: "#E6F1FB" }}>
-        <span style={{ fontSize: 11, color: "#0C447C" }}>$1 =</span>
+      <div className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 rounded-lg bg-accent-cyan/10 border border-accent-cyan/30">
+        <span className="text-2xs md:text-xs text-accent-cyan">$1 =</span>
         <input
           autoFocus
           value={val}
           onChange={e => setVal(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
-          style={{ width: 60, fontSize: 11, border: "none", background: "transparent", color: "#0C447C", outline: "none" }}
+          className="w-12 md:w-16 text-2xs md:text-xs bg-transparent text-white outline-none text-center"
         />
-        <span style={{ fontSize: 11, color: "#0C447C" }}>₹</span>
-        <Icon n="ti-check" size={13} color="#185FA5" style={{ cursor: "pointer" }} onClick={save} />
-        <Icon n="ti-x" size={13} color="var(--color-text-tertiary)" style={{ cursor: "pointer" }} onClick={() => setEditing(false)} />
+        <span className="text-2xs md:text-xs text-accent-cyan">₹</span>
+        <button onClick={save} className="text-accent-cyan hover:text-accent-gold">
+          <Icon n="ti-check" size={isMobile ? 12 : 14} />
+        </button>
+        <button onClick={() => setEditing(false)} className="text-white/40 hover:text-white/60">
+          <Icon n="ti-x" size={isMobile ? 12 : 14} />
+        </button>
       </div>
     );
   }
 
   return (
-    <div
+    <button
       onClick={() => { setVal(String(rate)); setEditing(true); }}
-      style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 9px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, background: "var(--color-background-secondary)", cursor: "pointer", fontSize: 11, color: "var(--color-text-secondary)" }}
+      className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-2xs md:text-xs text-white/60 hover:text-white/80 transition-all"
     >
-      <Icon n="ti-currency-dollar" size={12} />1 = <Icon n="ti-currency-rupee" size={12} />{rate.toFixed(2)}
-      <Icon n="ti-pencil" size={11} color="var(--color-text-tertiary)" />
-    </div>
+      <Icon n="ti-currency-dollar" size={isMobile ? 10 : 12} />
+      <span>1 =</span>
+      <Icon n="ti-currency-rupee" size={isMobile ? 10 : 12} />
+      <span>{rate.toFixed(2)}</span>
+      <Icon n="ti-pencil" size={isMobile ? 8 : 10} />
+    </button>
   );
 };

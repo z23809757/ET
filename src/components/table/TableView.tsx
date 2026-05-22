@@ -21,7 +21,7 @@ interface TableViewProps {
   onDeleteRow: (id: string) => void;
 }
 
-const ROW_H = 37;
+const ROW_H = 44; // Increased for better touch targets on mobile
 const VISIBLE = 25;
 
 export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onAddRow, onEditRow, onDeleteRow }) => {
@@ -34,6 +34,17 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
   const [rowFormulas, setRowFormulas] = useState<Record<string, Record<string, string>>>({});
   const [isLoadingFormulas, setIsLoadingFormulas] = useState(true);
   const [mergedFormulaValues, setMergedFormulaValues] = useState<Record<string, any>>({});
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const { state } = useFinanceStore();
 
@@ -358,7 +369,7 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
 
     const v = form[f.id] || '';
     const set = (val: any) => setForm((p: any) => ({ ...p, [f.id]: val }));
-    const baseInputClass = "flex-1 px-2 py-1.5 text-xs border border-white/10 rounded-lg bg-white/5 text-white/90 placeholder:text-white/20 focus:outline-none focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/30 transition-all min-w-0";
+    const baseInputClass = "flex-1 px-2 py-2 md:py-1.5 text-xs border border-white/10 rounded-lg bg-white/5 text-white/90 placeholder:text-white/20 focus:outline-none focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/30 transition-all min-w-0";
 
     if (f.type === 'Dropdown') {
       return (
@@ -401,7 +412,7 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
 
       return (
         <div className="flex items-center justify-between gap-2 w-full">
-          <div className="text-center font-medium text-white/90 px-2 py-1 flex-1 rounded">
+          <div className="text-center font-medium text-white/90 px-2 py-1 flex-1 rounded text-xs md:text-sm">
             {displayValue}
           </div>
           <button
@@ -413,10 +424,10 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
                 currentFormula: mergedCell.merged_value 
               });
             }}
-            className="bg-transparent border-none cursor-pointer text-xs text-accent-cyan hover:text-accent-gold transition-colors px-1 py-0.5 rounded flex items-center gap-1"
+            className="bg-transparent border-none cursor-pointer text-xs text-accent-cyan hover:text-accent-gold transition-colors px-1 py-0.5 rounded flex items-center gap-1 touch-manipulation"
           >
-            <Icon n="ti-edit" size={12} />
-            Edit
+            <Icon n="ti-edit" size={isMobile ? 14 : 12} />
+            <span className="hidden sm:inline">Edit</span>
           </button>
         </div>
       );
@@ -434,10 +445,10 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
         return (
           <button
             onClick={() => setShowFormulaBuilder({ field: f, rowId: row.id })}
-            className="bg-transparent border border-dashed border-white/20 rounded px-2 py-1 text-xs cursor-pointer text-accent-cyan hover:text-accent-gold hover:border-accent-cyan/50 transition-all flex items-center gap-1.5"
+            className="bg-transparent border border-dashed border-white/20 rounded px-2 py-1 text-xs cursor-pointer text-accent-cyan hover:text-accent-gold hover:border-accent-cyan/50 transition-all flex items-center gap-1.5 touch-manipulation"
           >
             <Icon n="ti-calculator" size={12} />
-            Set Formula
+            <span className="hidden sm:inline">Set Formula</span>
           </button>
         );
       }
@@ -446,12 +457,13 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
         const displayValue = formatField(calculatedValue, f.currency || 'USD', settings.displayCurrency, settings.exchangeRate);
         return (
           <div className="flex items-center justify-between gap-2">
-            <span>{displayValue}</span>
+            <span className="text-xs md:text-sm">{displayValue}</span>
             <button
               onClick={() => setShowFormulaBuilder({ field: f, rowId: row.id, currentFormula: formula })}
-              className="bg-transparent border-none cursor-pointer text-xs text-accent-cyan hover:text-accent-gold transition-colors px-1 py-0.5 rounded"
+              className="bg-transparent border-none cursor-pointer text-xs text-accent-cyan hover:text-accent-gold transition-colors px-1 py-0.5 rounded touch-manipulation"
             >
-              <Icon n="ti-edit" size={12} /> Edit
+              <Icon n="ti-edit" size={isMobile ? 14 : 12} />
+              <span className="hidden sm:inline">Edit</span>
             </button>
           </div>
         );
@@ -464,7 +476,7 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     if (f.type === 'Number' && v != null && v !== '') {
       return formatField(parseFloat(v) || 0, f.currency, settings.displayCurrency, settings.exchangeRate);
     }
-    return v || '';
+    return <span className="text-xs md:text-sm break-words">{v || ''}</span>;
   };
 
   const total = rows.length;
@@ -513,7 +525,7 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
       />
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center py-16 text-white/40">
+        <div className="flex flex-col items-center justify-center text-center py-16 px-4 text-white/40">
           <Icon n="ti-table-off" size={40} />
           <div className="mt-3 text-sm">No entries yet</div>
           <div className="text-xs text-white/30 mt-1">Click "Add" below to create your first entry</div>
@@ -523,125 +535,130 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
           onScroll={(e: React.UIEvent<HTMLDivElement>) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
           className="flex-1 overflow-auto relative"
         >
-          <table className="w-full border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-navy-800/95 backdrop-blur-sm">
-              <tr className="border-b border-white/10">
-                {table.fields.map(f => (
-                  <th key={f.id} className="px-2 py-2.5 text-left text-2xs font-semibold text-white/50 uppercase tracking-wider">
-                    {f.name}
-                    {f.type === 'Formula' && <span className="ml-1 text-[9px] text-accent-emerald">🔢</span>}
-                  </th>
-                ))}
-                <th className="px-2 py-2.5 text-left text-2xs font-semibold text-white/50 uppercase tracking-wider w-20">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {startIdx > 0 && (
-                <tr style={{ height: startIdx * ROW_H }}>
-                  <td colSpan={table.fields.length + 1} />
+          {/* Horizontal scroll wrapper for mobile */}
+          <div className="min-w-[600px] md:min-w-full overflow-x-auto">
+            <table className="w-full border-collapse text-xs">
+              <thead className="sticky top-0 z-10 bg-navy-800/95 backdrop-blur-sm">
+                <tr className="border-b border-white/10">
+                  {table.fields.map(f => (
+                    <th key={f.id} className="px-2 py-2.5 text-left text-2xs font-semibold text-white/50 uppercase tracking-wider whitespace-nowrap">
+                      {f.name}
+                      {f.type === 'Formula' && <span className="ml-1 text-[9px] text-accent-emerald">🔢</span>}
+                    </th>
+                  ))}
+                  <th className="px-2 py-2.5 text-left text-2xs font-semibold text-white/50 uppercase tracking-wider w-20 whitespace-nowrap">Actions</th>
                 </tr>
-              )}
+              </thead>
 
-              {visible.map((row) => {
-                const isDel = delId === row.id;
-
-                return (
-                  <tr 
-                    key={row.id}
-                    className="border-b border-white/5 hover:bg-white/5 transition-all duration-150 group"
-                    style={{ height: ROW_H }}
-                  >
-                    {table.fields.map((f) => {
-                      const cellContent = fmtCell(row, f);
-                      if (cellContent === null) return null;
-                      
-                      const mergedCell = isCellMerged(row.id, f.id);
-                      const isSelected = isCellSelected(row.id, f.id);
-                      const isInMergeMode = selectionMode !== 'none';
-                      
-                      const rowSpan = mergedCell ? getRowSpan(mergedCell, rows) : 1;
-                      const colSpan = mergedCell ? getColSpan(mergedCell, table.fields) : 1;
-
-                      return (
-                        <td
-                          key={`${row.id}_${f.id}`}
-                          onClick={(e: React.MouseEvent) => handleCellClick(row.id, f.id, e)}
-                          rowSpan={rowSpan}
-                          colSpan={colSpan}
-                          className={cn(
-                            "px-2 py-1.5 text-white/80 transition-all",
-                            isInMergeMode && "cursor-crosshair",
-                            isInMergeMode && isSelected && "bg-accent-cyan/10 border border-accent-cyan/50"
-                          )}
-                        >
-                          {cellContent}
-                        </td>
-                      );
-                    })}
-
-                    <td className="px-2 py-1.5">
-                      {isDel ? (
-                        <div className="flex items-center gap-1 text-xs">
-                          <span className="text-coral-400">Delete?</span>
-                          <button 
-                            onClick={() => { onDeleteRow(row.id); setDelId(null); }}
-                            className="text-coral-400 hover:text-coral-300 font-medium"
-                          >
-                            Yes
-                          </button>
-                          <span className="text-white/30">·</span>
-                          <button 
-                            onClick={() => setDelId(null)}
-                            className="text-white/40 hover:text-white/60"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Icon n="ti-edit" size={14} color="#06B6D4" className="cursor-pointer hover:scale-110 transition-transform" onClick={() => startEdit(row)} />
-                          <Icon n="ti-trash" size={14} color="#F43F5E" className="cursor-pointer hover:scale-110 transition-transform" onClick={() => setDelId(row.id)} />
-                        </div>
-                      )}
-                    </td>
+              <tbody>
+                {startIdx > 0 && (
+                  <tr style={{ height: startIdx * ROW_H }}>
+                    <td colSpan={table.fields.length + 1} />
                   </tr>
-                );
-              })}
+                )}
 
-              {endIdx < total && (
-                <tr style={{ height: (total - endIdx) * ROW_H }}>
-                  <td colSpan={table.fields.length + 1} />
-                </tr>
-              )}
-            </tbody>
-          </table>
+                {visible.map((row) => {
+                  const isDel = delId === row.id;
+
+                  return (
+                    <tr 
+                      key={row.id}
+                      className="border-b border-white/5 hover:bg-white/5 transition-all duration-150 group"
+                      style={{ height: ROW_H }}
+                    >
+                      {table.fields.map((f) => {
+                        const cellContent = fmtCell(row, f);
+                        if (cellContent === null) return null;
+                        
+                        const mergedCell = isCellMerged(row.id, f.id);
+                        const isSelected = isCellSelected(row.id, f.id);
+                        const isInMergeMode = selectionMode !== 'none';
+                        
+                        const rowSpan = mergedCell ? getRowSpan(mergedCell, rows) : 1;
+                        const colSpan = mergedCell ? getColSpan(mergedCell, table.fields) : 1;
+
+                        return (
+                          <td
+                            key={`${row.id}_${f.id}`}
+                            onClick={(e: React.MouseEvent) => handleCellClick(row.id, f.id, e)}
+                            rowSpan={rowSpan}
+                            colSpan={colSpan}
+                            className={cn(
+                              "px-2 py-2 md:py-1.5 text-white/80 transition-all align-middle",
+                              isInMergeMode && "cursor-crosshair",
+                              isInMergeMode && isSelected && "bg-accent-cyan/10 border border-accent-cyan/50"
+                            )}
+                          >
+                            {cellContent}
+                          </td>
+                        );
+                      })}
+
+                      <td className="px-2 py-2 md:py-1.5 align-middle">
+                        {isDel ? (
+                          <div className="flex items-center gap-1 text-xs flex-wrap">
+                            <span className="text-coral-400">Delete?</span>
+                            <button 
+                              onClick={() => { onDeleteRow(row.id); setDelId(null); }}
+                              className="text-coral-400 hover:text-coral-300 font-medium touch-manipulation"
+                            >
+                              Yes
+                            </button>
+                            <span className="text-white/30">·</span>
+                            <button 
+                              onClick={() => setDelId(null)}
+                              className="text-white/40 hover:text-white/60 touch-manipulation"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <Icon n="ti-edit" size={isMobile ? 18 : 14} color="#06B6D4" className="cursor-pointer hover:scale-110 transition-transform touch-manipulation" onClick={() => startEdit(row)} />
+                            <Icon n="ti-trash" size={isMobile ? 18 : 14} color="#F43F5E" className="cursor-pointer hover:scale-110 transition-transform touch-manipulation" onClick={() => setDelId(row.id)} />
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {endIdx < total && (
+                  <tr style={{ height: (total - endIdx) * ROW_H }}>
+                    <td colSpan={table.fields.length + 1} />
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* Entry Bar */}
-      <div className="border-t border-white/10 p-3 bg-white/5 backdrop-blur-sm">
+      {/* Entry Bar - Responsive */}
+      <div className="border-t border-white/10 p-2 md:p-3 bg-white/5 backdrop-blur-sm">
         <div className="text-2xs font-semibold text-white/40 uppercase tracking-wider mb-2">
           {editId ? 'EDIT ROW' : 'ADD NEW ROW'}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
           {table.fields.map(f => (
-            <div key={f.id} className="flex-1 min-w-[80px]">
+            <div key={f.id} className="flex-1 min-w-[100px] sm:min-w-[80px]">
               {renderInput(f)}
             </div>
           ))}
-          <Button variant={editId ? 'green' : 'blue'} onClick={submit} size="sm">
-            <Icon n={editId ? 'ti-check' : 'ti-plus'} size={12} />
-            {editId ? 'Save' : 'Add'}
-          </Button>
-          {editId && (
-            <button
-              onClick={cancelEdit}
-              className="text-xs text-white/40 hover:text-white/60 transition-colors"
-            >
-              Cancel
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <Button variant={editId ? 'green' : 'blue'} onClick={submit} size="sm" className="flex-1 sm:flex-none">
+              <Icon n={editId ? 'ti-check' : 'ti-plus'} size={12} />
+              {editId ? 'Save' : 'Add'}
+            </Button>
+            {editId && (
+              <button
+                onClick={cancelEdit}
+                className="text-xs text-white/40 hover:text-white/60 transition-colors px-2 py-2 touch-manipulation"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
