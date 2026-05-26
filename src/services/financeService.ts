@@ -178,6 +178,7 @@ async createGlobalTable(name: string, fields: Field[], type: string = 'None', in
       is_reference: true, 
       is_global: true,
       include_in_overall: includeInOverall,
+      user_id: userData.user.id,
       tab_id: null
     })
     .select()
