@@ -49,6 +49,19 @@
   ::selection { 
     background: rgba(16,185,129,0.25); 
   }
+
+  /* Native <select> dropdown options — force dark bg + light text so they're
+     readable when the list is open (browsers render the option list with their
+     own default light background otherwise). */
+  select option {
+    background-color: #1E293B;
+    color: #F1F5F9;
+  }
+  select option:checked,
+  select option:hover {
+    background-color: #0D7377;
+    color: #FFFFFF;
+  }
 }
 
 /* ─── Component classes ───────────────────────────────────────────────────── */

@@ -6,7 +6,7 @@ export interface UserSettings {
 export interface Field {
   id: string;
   name: string;
-  type: 'Text' | 'Number' | 'Date' | 'Month' | 'Dropdown' | 'Formula';
+  type: 'Text' | 'Number' | 'Date' | 'Month' | 'Dropdown' | 'Formula' | 'Start Time' | 'End Time' | 'Total Hours' | 'Estimated Pay';
   currency?: 'USD' | 'INR' | 'None';
   isPrimary?: boolean;
   dropdownOptions?: Array<{ id: string; label: string }>;
@@ -18,6 +18,7 @@ export interface Table {
   type: string | null;
   is_reference?: boolean;
   is_global?: boolean;
+  include_in_overall?: boolean;
   tab_id?: string | null;
   fields: Field[];
 }
@@ -38,20 +39,13 @@ export interface OverallRow {
   id: string;
   year: number;
   month: string;
-<<<<<<< HEAD
-=======
   date?: string;
->>>>>>> eead2da (Small Changes)
   category: string;
   subcategory: string;
   type: 'Expense' | 'Income' | 'Transfer' | 'Loan';
   amtUSD: number;
   amtINR: number;
   categoryId?: string;
-<<<<<<< HEAD
-  tableId?: string;
-}
-=======
   tabId?: string;
   tableId?: string;
 }
@@ -99,4 +93,3 @@ export interface YearlyComparison {
     years: Record<string, number>;
   }>;
 }
->>>>>>> eead2da (Small Changes)

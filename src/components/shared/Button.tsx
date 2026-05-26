@@ -8,10 +8,12 @@ interface ButtonProps {
   onClick?: () => void;
   variant?: 'default' | 'blue' | 'green' | 'red' | 'ghost';
   small?: boolean;
+  size?: 'sm' | 'md';
   disabled?: boolean;
   style?: React.CSSProperties;
   className?: string;
   loading?: boolean;
+  icon?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({ 
@@ -19,13 +21,16 @@ export const Button: React.FC<ButtonProps> = ({
   onClick, 
   variant = 'default', 
   small, 
+  size,
   disabled, 
   style = {},
   className,
-  loading = false
+  loading = false,
+  icon
 }) => {
-  // Size classes
-  const sizeClasses = small 
+  // Size classes (treat size="sm" the same as the legacy `small` flag)
+  const isSmall = small || size === 'sm';
+  const sizeClasses = isSmall 
     ? 'px-3 py-1.5 text-xs gap-1.5' 
     : 'px-4 py-2 text-sm gap-2';
   
@@ -87,6 +92,7 @@ export const Button: React.FC<ButtonProps> = ({
       
       {/* Content */}
       <span className="relative z-10 inline-flex items-center gap-1.5">
+        {icon && !loading && <span className="inline-flex items-center">{icon}</span>}
         {content}
       </span>
     </button>

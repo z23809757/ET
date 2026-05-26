@@ -11,6 +11,27 @@ import { useMergeCells } from '../../hooks/useMergeCells';
 import { useFormulaEvaluation } from '../../hooks/useFormulaEvaluation';
 import { MergeToolbar } from './MergeToolbar';
 import { cn } from '../../lib/utils';
+import { diffMinutes, formatHM, computePay, parseTimeToMinutes, computeRowMinutes } from '../../lib/timeMath';
+
+// Convert "h:mm AM/PM" (stored) <-> "HH:MM" (native <input type=time>)
+const to24h = (v: string): string => {
+  const min = parseTimeToMinutes(v);
+  if (min === null) return '';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
+const to12h = (hhmm: string): string => {
+  if (!hhmm) return '';
+  const [hStr, mStr] = hhmm.split(':');
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return '';
+  const ap = h >= 12 ? 'PM' : 'AM';
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${h}:${m.toString().padStart(2, '0')} ${ap}`;
+};
 
 interface TableViewProps {
   table: Table;
@@ -19,12 +40,13 @@ interface TableViewProps {
   onAddRow: (data: any) => void;
   onEditRow: (id: string, data: any) => void;
   onDeleteRow: (id: string) => void;
+  onRateChange?: (rate: number) => void;
 }
 
 const ROW_H = 44; // Increased for better touch targets on mobile
 const VISIBLE = 25;
 
-export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onAddRow, onEditRow, onDeleteRow }) => {
+export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onAddRow, onEditRow, onDeleteRow, onRateChange }) => {
   const [form, setForm] = useState({});
   const [editId, setEditId] = useState<string | null>(null);
   const [delId, setDelId] = useState<string | null>(null);
@@ -355,6 +377,27 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
            currentColIdx >= minCol && currentColIdx <= maxCol;
   };
 
+  // Per-table hourly rate. Seeded from the table's stored value (once the
+  // migration adds the column); editable live via the rate bar at the top.
+  const [rateInput, setRateInput] = useState<string>(
+    String(Number((table as any).hourly_rate) || '')
+  );
+  const hourlyRate = Number(rateInput) || 0;
+
+  // Compute the auto value for a Total Hours / Estimated Pay field from the
+  // current form's Start/End Time fields.
+  const computeAutoValue = (f: any, formData: Record<string, any>): string => {
+    const startField = table.fields.find((x: any) => x.type === 'Start Time');
+    const endField = table.fields.find((x: any) => x.type === 'End Time');
+    if (!startField || !endField) return '';
+    const min = diffMinutes(formData[startField.id], formData[endField.id]);
+    if (min === null) return '';
+    if (f.type === 'Total Hours') return formatHM(min);
+    // Estimated Pay
+    const pay = computePay(min, hourlyRate);
+    return pay.toFixed(2);
+  };
+
   const renderInput = (f: any) => {
     if (f.type === 'Formula') {
       return (
@@ -384,6 +427,38 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     if (f.type === 'Date') return <input key={f.id} type="date" value={v} onChange={(e: any) => set(e.target.value)} className={baseInputClass} />;
     if (f.type === 'Month') return <input key={f.id} type="month" value={v} onChange={(e: any) => set(e.target.value)} className={baseInputClass} />;
     if (f.type === 'Number') return <input key={f.id} type="number" value={v} onChange={(e: any) => set(e.target.value)} placeholder={f.name} className={cn(baseInputClass, "text-right")} />;
+
+    // Start/End Time: a native time input, displayed/stored as 12-hour AM/PM.
+    if (f.type === 'Start Time' || f.type === 'End Time') {
+      return (
+        <input
+          key={f.id}
+          type="time"
+          value={to24h(v)}
+          onChange={(e: any) => set(to12h(e.target.value))}
+          placeholder={f.name}
+          className={baseInputClass}
+        />
+      );
+    }
+
+    // Total Hours / Estimated Pay: auto-computed, but user may override by typing.
+    if (f.type === 'Total Hours' || f.type === 'Estimated Pay') {
+      const auto = computeAutoValue(f, form);
+      const isOverridden = v !== '' && v != null;
+      return (
+        <input
+          key={f.id}
+          type="text"
+          value={isOverridden ? v : auto}
+          onChange={(e: any) => set(e.target.value)}
+          placeholder={auto || (f.type === 'Total Hours' ? 'auto' : 'auto')}
+          className={cn(baseInputClass, "text-right", !isOverridden && "text-white/50 italic")}
+          title={isOverridden ? 'Overridden — clear to auto-calculate' : 'Auto-calculated from Start/End Time'}
+        />
+      );
+    }
+
     return <input key={f.id} type="text" value={v} onChange={(e: any) => set(e.target.value)} placeholder={f.name} className={baseInputClass} />;
   };
 
@@ -473,6 +548,27 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     }
 
     const v = row[f.id];
+
+    // Time fields: show the stored "h:mm AM/PM" as-is.
+    if (f.type === 'Start Time' || f.type === 'End Time') {
+      return <span className="text-xs md:text-sm">{v || ''}</span>;
+    }
+    // Total Hours / Estimated Pay: use stored override if present, else compute from the row.
+    if (f.type === 'Total Hours' || f.type === 'Estimated Pay') {
+      if (v != null && v !== '') {
+        // overridden / stored value
+        if (f.type === 'Estimated Pay') {
+          return formatField(parseFloat(v) || 0, f.currency || 'USD', settings.displayCurrency, settings.exchangeRate);
+        }
+        return <span className="text-xs md:text-sm">{v}</span>;
+      }
+      const min = computeRowMinutes(table.fields, row);
+      if (min === null) return <span className="text-white/30 text-xs">—</span>;
+      if (f.type === 'Total Hours') return <span className="text-xs md:text-sm">{formatHM(min)}</span>;
+      const pay = computePay(min, hourlyRate);
+      return formatField(pay, f.currency || 'USD', settings.displayCurrency, settings.exchangeRate);
+    }
+
     if (f.type === 'Number' && v != null && v !== '') {
       return formatField(parseFloat(v) || 0, f.currency, settings.displayCurrency, settings.exchangeRate);
     }
@@ -523,6 +619,28 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
         onApplyMerge={handleApplyMerge}
         onCancelSelection={handleCancelSelection}
       />
+
+      {table.fields.some((f: any) => f.type === 'Estimated Pay') && (
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/10 bg-white/5">
+          <Icon n="ti-cash" size={16} />
+          <label className="text-xs text-white/70">Hourly rate</label>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-white/50">$</span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={rateInput}
+              onChange={(e) => setRateInput(e.target.value)}
+              onBlur={() => onRateChange?.(Number(rateInput) || 0)}
+              placeholder="0.00"
+              className="w-24 px-2 py-1 text-xs rounded-lg bg-white/10 border border-white/10 text-white/90 focus:outline-none focus:border-accent-cyan/50"
+            />
+            <span className="text-xs text-white/50">/ hour</span>
+          </div>
+          <span className="text-2xs text-white/30 ml-auto">Estimated Pay = total hours × rate</span>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center py-16 px-4 text-white/40">

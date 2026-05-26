@@ -321,9 +321,9 @@ export function useFinanceStore() {
     }
   }, [state.years, state.tabsByYear]);
 
-  const createGlobalTable = useCallback(async (name: string, fields: any[]) => {
+  const createGlobalTable = useCallback(async (name: string, fields: any[], type: string = 'None', includeInOverall: boolean = false) => {
     try {
-      const newTable = await financeService.createGlobalTable(name, fields);
+      const newTable = await financeService.createGlobalTable(name, fields, type, includeInOverall);
       // Also fetch rows for this new global table (empty initially)
       const rows = await financeService.fetchRows(newTable.id);
       dispatch({ type: 'SET_ROWS', tableId: newTable.id, rows });
@@ -434,18 +434,22 @@ export function useFinanceStore() {
     if (!state.activeYearId) return [];
     const tabs = state.tabsByYear[state.activeYearId] || [];
     const filteredTabs = filterNonReferenceTables(tabs);
-    return FE.aggregateOverall(filteredTabs, state.rowsByTable, state.settings.exchangeRate, state.activeYear || 0);
-  }, [state.activeYearId, state.tabsByYear, state.rowsByTable, state.settings.exchangeRate, state.activeYear]);
+    const base = FE.aggregateOverall(filteredTabs, state.rowsByTable, state.settings.exchangeRate, state.activeYear || 0);
+    const globalRows = FE.aggregateGlobalTablesForYear(state.globalTables, state.rowsByTable, state.settings.exchangeRate, state.activeYear || 0);
+    return [...base, ...globalRows].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  }, [state.activeYearId, state.tabsByYear, state.rowsByTable, state.settings.exchangeRate, state.activeYear, state.globalTables]);
 
   const allYearsRows = useMemo(() => {
     const out: Record<string, OverallRow[]> = {};
     for (const year of state.years) {
       const tabs = state.tabsByYear[year.id] || [];
       const filteredTabs = filterNonReferenceTables(tabs);
-      out[year.year] = FE.aggregateOverall(filteredTabs, state.rowsByTable, state.settings.exchangeRate, year.year);
+      const base = FE.aggregateOverall(filteredTabs, state.rowsByTable, state.settings.exchangeRate, year.year);
+      const globalRows = FE.aggregateGlobalTablesForYear(state.globalTables, state.rowsByTable, state.settings.exchangeRate, year.year);
+      out[year.year] = [...base, ...globalRows].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     }
     return out;
-  }, [state.years, state.tabsByYear, state.rowsByTable, state.settings.exchangeRate]);
+  }, [state.years, state.tabsByYear, state.rowsByTable, state.settings.exchangeRate, state.globalTables]);
 
   return {
     state,

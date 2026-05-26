@@ -82,14 +82,11 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   const glareX   = useTransform(rawX, [-0.5, 0.5], ["0%", "100%"]);
   const glareY   = useTransform(rawY, [-0.5, 0.5], ["0%", "100%"]);
   const glareOpacity = useSpring(0, { stiffness: 180, damping: 28 });
-<<<<<<< HEAD
-=======
   const glareBackground = useTransform(
     [glareX, glareY],
     ([x, y]: string[]) =>
       `radial-gradient(circle at ${x} ${y}, rgba(255,255,255,0.5) 0%, transparent 62%)`,
   );
->>>>>>> eead2da (Small Changes)
 
   const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!doTilt || !ref.current) return;
@@ -189,15 +186,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
           className="pointer-events-none absolute inset-0 rounded-2xl z-20"
           style={{
             opacity: glareOpacity,
-<<<<<<< HEAD
-            background: useTransform(
-              [glareX, glareY],
-              ([x, y]: string[]) =>
-                `radial-gradient(circle at ${x} ${y}, rgba(255,255,255,0.5) 0%, transparent 62%)`,
-            ),
-=======
             background: glareBackground,
->>>>>>> eead2da (Small Changes)
           }}
         />
       )}
@@ -208,8 +197,4 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   );
 };
 
-<<<<<<< HEAD
 export default GlassCard;
-=======
-export default GlassCard;
->>>>>>> eead2da (Small Changes)

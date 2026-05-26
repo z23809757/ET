@@ -11,7 +11,7 @@ interface TableModalProps {
   initial?: any;
   hasRows?: boolean;
   isGlobal?: boolean;
-  onSave: (data: { name: string; type: string; fields: Field[]; is_reference?: boolean; is_global?: boolean }) => void;
+  onSave: (data: { name: string; type: string; fields: Field[]; is_reference?: boolean; is_global?: boolean; include_in_overall?: boolean }) => void;
   onClose: () => void;
 }
 
@@ -22,6 +22,7 @@ export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false
   const [fields, setFields] = useState<Field[]>(initial?.fields || [{ id: uid(), name: '', type: 'Text', currency: 'None', isPrimary: false, dropdownOptions: [] }]);
   const [ttype, setTtype] = useState(initial?.type || 'Expense');
   const [isReference, setIsReference] = useState(initial?.is_reference || isGlobal);
+  const [includeInOverall, setIncludeInOverall] = useState<boolean>((initial as any)?.include_in_overall || false);
 
   const valid = name.trim() && fields.length > 0 && fields.every(f => f.name.trim());
 
@@ -96,13 +97,56 @@ export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false
                 <span>Available in ALL years for formula references</span>
               </div>
               <div className="flex items-center gap-2">
-                <Icon n="ti-x" size={12} className="text-coral-400" />
-                <span>NOT included in financial calculations (Dashboard, Overall, All Years)</span>
-              </div>
-              <div className="flex items-center gap-2">
                 <Icon n="ti-star" size={12} className="text-accent-gold" />
                 <span>Perfect for exchange rates, tax brackets, lookup data</span>
               </div>
+            </div>
+
+            {/* Toggle: include this global table in financial aggregation */}
+            <div className="mt-3 ml-6 pt-3 border-t border-accent-cyan/20">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={includeInOverall}
+                  onChange={e => setIncludeInOverall(e.target.checked)}
+                  className="w-4 h-4 accent-accent-cyan"
+                />
+                <span className="text-xs text-white/80 font-medium">
+                  Include this table in Dashboard, Overall &amp; All Years
+                </span>
+              </label>
+              <p className="text-2xs text-white/40 mt-1 ml-6">
+                When on, each row is counted in the year taken from its Month field.
+                Requires a Month field and a Primary amount field below.
+              </p>
+
+              {includeInOverall && (
+                <div className="mt-3 ml-6">
+                  <label className="text-2xs text-white/50 uppercase tracking-wider block mb-1.5">
+                    Counts as
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Expense', 'Income', 'Transfer', 'Loan'].map(t => {
+                      const c = TYPE_C[t as keyof typeof TYPE_C];
+                      const active = ttype === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setTtype(t)}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-all"
+                          style={active
+                            ? { background: c.bg, color: c.text, border: `1px solid ${c.border}` }
+                            : { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}
+                        >
+                          <Icon n={TYPE_ICON[t as keyof typeof TYPE_ICON]} size={12} />
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -296,10 +340,11 @@ export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false
           disabled={!valid}
           onClick={() => onSave({ 
             name: name.trim(), 
-            type: ttype, 
+            type: (isGlobal && !includeInOverall) ? 'None' : ttype, 
             fields, 
             is_reference: isGlobal || isReference,
-            is_global: isGlobal
+            is_global: isGlobal,
+            include_in_overall: isGlobal ? includeInOverall : false
           })}
           icon={<Icon n="ti-check" size={13} />}
         >

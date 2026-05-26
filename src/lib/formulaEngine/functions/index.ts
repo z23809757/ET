@@ -9,14 +9,6 @@ export const formulaFunctions = {
 };
 
 export const evaluateFunction = (functionName: string, args: any[]): any => {
-<<<<<<< HEAD
-  const func = formulaFunctions[functionName.toLowerCase() as keyof typeof formulaFunctions];
-  if (func) {
-    return func(args);
-  }
-  throw new Error(`Unknown function: ${functionName}`);
-};
-=======
   const name = functionName.toLowerCase() as keyof typeof formulaFunctions;
   const func = formulaFunctions[name];
   if (func) {
@@ -24,4 +16,3 @@ export const evaluateFunction = (functionName: string, args: any[]): any => {
   }
   throw new Error(`Unknown function: ${functionName}`);
 };
->>>>>>> eead2da (Small Changes)

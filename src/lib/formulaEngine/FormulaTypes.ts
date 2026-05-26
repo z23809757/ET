@@ -16,6 +16,7 @@ export interface FormulaFunction {
   name: string;
   minArgs: number;
   maxArgs: number;
+  description?: string;
   evaluate: (args: any[], context: EvaluationContext) => any;
 }
 

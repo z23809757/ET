@@ -1,4 +1,3 @@
-
 import React from "react";
 import { motion } from "framer-motion";
 import { EASING } from "../../lib/theme";
@@ -17,7 +16,7 @@ export interface PageTransitionProps {
 // ─── Variant presets ──────────────────────────────────────────────────────────
 
 const VARIANTS: Record<TransitionStyle, {
-  initial: object; animate: object; exit: object; transition: object;
+  initial: any; animate: any; exit: any; transition: any;
 }> = {
   fadeUp: {
     initial:    { opacity: 0, y: 16 },

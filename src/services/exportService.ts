@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { computeRowMinutes, formatHM, computePay } from '../lib/timeMath';
 import { OverallRow, MonthlySummary, CategorySummary, YearlyComparison, Row, Table } from '../types/finance';
 import { MONTHS } from '../lib/constants';
 
@@ -48,11 +49,20 @@ export const exportService = {
   },
 
   exportTable(rows: Row[], table: Table, year: number) {
+    const rate = Number((table as any).hourly_rate) || 0;
     const ws = XLSX.utils.json_to_sheet(
       rows.map(r => {
         const o: any = {};
         table.fields.forEach(f => {
-          o[f.name] = r[f.id] || '';
+          let val = r[f.id];
+          // Compute time-derived fields if not explicitly stored/overridden.
+          if ((f.type === 'Total Hours' || f.type === 'Estimated Pay') && (val == null || val === '')) {
+            const min = computeRowMinutes(table.fields, r);
+            if (min != null) {
+              val = f.type === 'Total Hours' ? formatHM(min) : computePay(min, rate).toFixed(2);
+            }
+          }
+          o[f.name] = val || '';
         });
         return o;
       })

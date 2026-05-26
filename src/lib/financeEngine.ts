@@ -14,7 +14,7 @@ export const FE = {
     for (const tab of tabs) {
       for (const tbl of tab.tables || []) {
         if (!tbl.type || tbl.type === "None") continue;
-        const pf = (tbl.fields || []).find((f: any) => f.isPrimary && (f.type === "Number" || f.type === "Formula"));
+        const pf = (tbl.fields || []).find((f: any) => f.isPrimary && (f.type === "Number" || f.type === "Formula" || f.type === "Estimated Pay"));
         if (!pf) continue;
         const mf = (tbl.fields || []).find((f: any) => f.type === "Month" || f.type === "Date");
         for (const row of rowsByTable[tbl.id] || []) {
@@ -43,6 +43,78 @@ export const FE = {
       }
     }
     return out.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  },
+
+  /**
+   * Aggregate INCLUDED global tables into OverallRows for a specific target year.
+   * Each global row is counted only if the year embedded in its Month field
+   * (YYYY-MM) matches `targetYear`. Returns the matching rows plus a list of
+   * rows whose year matched NO known year (for warning the user).
+   */
+  aggregateGlobalTablesForYear(
+    globalTables: any[],
+    rowsByTable: Record<string, any[]>,
+    rate: number,
+    targetYear: number
+  ): OverallRow[] {
+    const out: OverallRow[] = [];
+    for (const tbl of globalTables) {
+      if (!tbl.include_in_overall) continue;
+      if (!tbl.type || tbl.type === "None") continue;
+      const pf = (tbl.fields || []).find(
+        (f: any) => f.isPrimary && (f.type === "Number" || f.type === "Formula" || f.type === "Estimated Pay")
+      );
+      if (!pf) continue;
+      const mf = (tbl.fields || []).find((f: any) => f.type === "Month" || f.type === "Date");
+      if (!mf) continue; // a global table with no month/date can't be year-routed
+
+      for (const row of rowsByTable[tbl.id] || []) {
+        const rawMonth = row[mf.id] || "";
+        if (!rawMonth) continue;
+        const rowYear = parseInt(String(rawMonth).slice(0, 4), 10);
+        if (rowYear !== targetYear) continue; // only count rows belonging to this year
+
+        let amount = row[pf.id];
+        if (pf.type === "Formula" && row._formulaValues?.[pf.id]) {
+          amount = row._formulaValues[pf.id];
+        }
+        const { usd, inr } = toUsdInr(amount, pf.currency, rate);
+        out.push({
+          id: row.id,
+          year: targetYear,
+          month: rawMonth ? String(rawMonth).slice(0, 7) : "",
+          date: rawMonth,
+          category: "Global",
+          subcategory: tbl.name,
+          type: tbl.type,
+          amtUSD: usd,
+          amtINR: inr,
+          tabId: undefined,
+          tableId: tbl.id,
+        });
+      }
+    }
+    return out;
+  },
+
+  /** Years (numbers) that included global-table rows reference via their Month field. */
+  globalTableReferencedYears(
+    globalTables: any[],
+    rowsByTable: Record<string, any[]>
+  ): number[] {
+    const years = new Set<number>();
+    for (const tbl of globalTables) {
+      if (!tbl.include_in_overall) continue;
+      const mf = (tbl.fields || []).find((f: any) => f.type === "Month" || f.type === "Date");
+      if (!mf) continue;
+      for (const row of rowsByTable[tbl.id] || []) {
+        const rawMonth = row[mf.id] || "";
+        if (!rawMonth) continue;
+        const y = parseInt(String(rawMonth).slice(0, 4), 10);
+        if (!isNaN(y)) years.add(y);
+      }
+    }
+    return Array.from(years);
   },
 
   filterByDate(rows: OverallRow[], from: string, to: string): OverallRow[] {
@@ -184,7 +256,7 @@ chartData(rows: OverallRow[]): ChartData {
     const map: Record<string, any> = {};
     for (const r of rows) {
       const k = r.month || "Unknown";
-      if (!map[k]) map[k] = { month: k, income: 0, expense: 0, cats: {} };
+      if (!map[k]) map[k] = { month: k, income: 0, expense: 0, cats: {} as Record<string, number> };
       if (r.type === "Income") map[k].income += r.amtUSD;
       if (r.type === "Expense") {
         map[k].expense += r.amtUSD;
@@ -194,7 +266,7 @@ chartData(rows: OverallRow[]): ChartData {
     return Object.values(map).sort((a, b) => a.month.localeCompare(b.month)).map(r => ({
       ...r,
       savings: r.income - r.expense,
-      biggestCat: Object.entries(r.cats).sort((a, b) => b[1] - a[1])[0]?.[0] || "—",
+      biggestCat: (Object.entries(r.cats) as [string, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] || "—",
     }));
   },
 

@@ -12,7 +12,7 @@ export class DependencyTracker {
   addFormula(formula: Formula) {
     const node: DependencyNode = {
       formulaId: formula.id,
-      dependsOn: formula.dependsOn.map(ref => this.referenceToString(ref)),
+      dependsOn: formula.dependsOn,
       dependents: []
     };
     

@@ -1,4 +1,3 @@
-
 import React from "react";
 import { motion } from "framer-motion";
 import { MOTION, COLORS } from "../../lib/theme";
@@ -15,6 +14,8 @@ export interface GlassPanelProps {
   /** Slot rendered below the content with a divider */
   footer?:        React.ReactNode;
   depth?:         GlassPanelDepth;
+  /** @deprecated Alias for `depth`, kept for backward compatibility. */
+  variant?:       GlassPanelDepth;
   /** Disable entry animation */
   static?:        boolean;
   /** Override border-radius (default: rounded-2xl) */
@@ -49,7 +50,8 @@ export const GlassPanel: React.FC<GlassPanelProps> = ({
   children,
   header,
   footer,
-  depth         = "default",
+  depth,
+  variant,
   static:       isStatic = false,
   radius        = "2xl",
   flush         = false,
@@ -58,6 +60,7 @@ export const GlassPanel: React.FC<GlassPanelProps> = ({
   bodyClassName,
   footerClassName,
 }) => {
+  const resolvedDepth: GlassPanelDepth = depth ?? variant ?? "default";
   const Wrapper = isStatic ? "div" : motion.div;
   const motionProps = isStatic
     ? {}
@@ -68,7 +71,7 @@ export const GlassPanel: React.FC<GlassPanelProps> = ({
       {...(motionProps as any)}
       className={cn(
         "relative isolate overflow-hidden",
-        DEPTH_CLS[depth],
+        DEPTH_CLS[resolvedDepth],
         RADIUS_CLS[radius],
         className,
       )}

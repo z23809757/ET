@@ -10,10 +10,13 @@ import { cn } from '../../../lib/utils';
 
 interface ReferencePickerProps {
   references: CellReference[];
-  onSelect: (reference: CellReference) => void;
+  onSelect: (reference: CellReference) => void | Promise<void>;
+  tableId?: string;
+  merges?: any[];
+  onCancel?: () => void;
 }
 
-export const ReferencePicker: React.FC<ReferencePickerProps> = ({ references = [], onSelect }) => {
+export const ReferencePicker: React.FC<ReferencePickerProps> = ({ references = [], onSelect, tableId, merges, onCancel }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [selectedField, setSelectedField] = useState<string | null>(null);

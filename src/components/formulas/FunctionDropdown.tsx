@@ -5,9 +5,10 @@ import { FORMULA_FUNCTIONS } from '../../lib/formulaEngine';
 
 interface FunctionDropdownProps {
   onSelect: (functionName: string) => void;
+  onClose?: () => void;
 }
 
-export const FunctionDropdown: React.FC<FunctionDropdownProps> = ({ onSelect }) => {
+export const FunctionDropdown: React.FC<FunctionDropdownProps> = ({ onSelect, onClose }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   
   return (
@@ -36,6 +37,7 @@ export const FunctionDropdown: React.FC<FunctionDropdownProps> = ({ onSelect }) 
               onClick={() => {
                 onSelect(func.name);
                 setShowDropdown(false);
+                onClose?.();
               }}
               style={{
                 padding: '6px 10px',

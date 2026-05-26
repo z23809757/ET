@@ -166,7 +166,7 @@ async fetchGlobalTables(): Promise<Table[]> {
     return { ...data, fields: [] };
   },
 
-async createGlobalTable(name: string, fields: Field[]): Promise<Table> {
+async createGlobalTable(name: string, fields: Field[], type: string = 'None', includeInOverall: boolean = false): Promise<Table> {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Not authenticated');
   
@@ -174,9 +174,10 @@ async createGlobalTable(name: string, fields: Field[]): Promise<Table> {
     .from('tables')
     .insert({ 
       name, 
-      type: 'None',
+      type: includeInOverall ? type : 'None',
       is_reference: true, 
       is_global: true,
+      include_in_overall: includeInOverall,
       tab_id: null
     })
     .select()

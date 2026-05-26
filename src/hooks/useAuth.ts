@@ -38,7 +38,7 @@ export function useAuth() {
       }
     });
     
-    subscription = data;
+    subscription = data.subscription;
 
     return () => {
       mounted = false;
@@ -48,8 +48,8 @@ export function useAuth() {
     };
   }, []);
 
-  const signUp = async (email: string, password: string) => {
-    await authService.signUp(email, password);
+  const signUp = async (email: string, password: string, metadata?: any) => {
+    await authService.signUp(email, password, metadata);
   };
 
   const signIn = async (email: string, password: string) => {

@@ -470,7 +470,7 @@ export const AppShell: React.FC = () => {
             isGlobal={true}
             onClose={() => setShowGlobalTableModal(false)}
             onSave={async (data) => {
-              await createGlobalTable(data.name, data.fields);
+              await createGlobalTable(data.name, data.fields, data.type, data.include_in_overall);
               setShowGlobalTableModal(false);
             }}
           />
