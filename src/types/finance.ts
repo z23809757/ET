@@ -19,6 +19,7 @@ export interface Table {
   is_reference?: boolean;
   is_global?: boolean;
   include_in_overall?: boolean;
+  hourly_rate?: number | null;
   tab_id?: string | null;
   fields: Field[];
 }

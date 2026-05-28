@@ -82,7 +82,8 @@ type Action =
   | { type: 'SET_MODAL'; modal: ModalState | null }
   | { type: 'SET_DELETE_TARGET'; target: DeleteTarget | null }
   | { type: 'SET_RATE'; rate: number }
-  | { type: 'SET_DISPLAY_CURRENCY'; cur: 'USD' | 'INR' };
+  | { type: 'SET_DISPLAY_CURRENCY'; cur: 'USD' | 'INR' }
+  | { type: 'UPDATE_TABLE_RATE'; tableId: string; rate: number };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -162,6 +163,24 @@ function reducer(state: State, action: Action): State {
       return { ...state, settings: { ...state.settings, exchangeRate: action.rate } };
     case 'SET_DISPLAY_CURRENCY':
       return { ...state, settings: { ...state.settings, displayCurrency: action.cur } };
+    case 'UPDATE_TABLE_RATE':
+      return {
+        ...state,
+        tabsByYear: Object.fromEntries(
+          Object.entries(state.tabsByYear).map(([yearId, tabs]) => [
+            yearId,
+            tabs.map(tab => ({
+              ...tab,
+              tables: tab.tables.map(table =>
+                table.id === action.tableId ? { ...table, hourly_rate: action.rate } : table
+              ),
+            })),
+          ])
+        ),
+        globalTables: state.globalTables.map(table =>
+          table.id === action.tableId ? { ...table, hourly_rate: action.rate } : table
+        ),
+      };
     default:
       return state;
   }
@@ -354,6 +373,12 @@ export function useFinanceStore() {
     toast.success(`Table "${name}" updated`);
   }, [state.years, state.tabsByYear]);
 
+  const updateTableRate = useCallback(async (tableId: string, rate: number) => {
+    await financeService.updateTable(tableId, { hourly_rate: rate });
+    dispatch({ type: 'UPDATE_TABLE_RATE', tableId, rate });
+    toast.success('Hourly rate updated');
+  }, []);
+
   const addRow = useCallback(async (tableId: string, rowData: any) => {
     const newRow = await financeService.addRow(tableId, rowData);
     dispatch({ type: 'ADD_ROW', tableId, row: newRow });
@@ -462,6 +487,7 @@ export function useFinanceStore() {
     createTable,
     createGlobalTable,
     updateTable,
+    updateTableRate,
     addRow,
     updateRow,
     deleteRow,

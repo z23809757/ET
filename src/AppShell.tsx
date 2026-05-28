@@ -46,6 +46,7 @@ export const AppShell: React.FC = () => {
     createTable,
     createGlobalTable,
     updateTable,
+    updateTableRate,
     addRow,
     updateRow,
     deleteRow,
@@ -372,9 +373,11 @@ export const AppShell: React.FC = () => {
                 table={currentTable}
                 rows={currentRows}
                 settings={settings}
+                financeState={state}
                 onAddRow={(data) => addRow(currentTable.id, data)}
                 onEditRow={(id, data) => updateRow(currentTable.id, id, data)}
                 onDeleteRow={(id) => deleteRow(currentTable.id, id)}
+                onRateChange={(rate) => updateTableRate(currentTable.id, rate)}
               />
             )}
           </div>

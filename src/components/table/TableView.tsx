@@ -37,6 +37,7 @@ interface TableViewProps {
   table: Table;
   rows: Row[];
   settings: UserSettings;
+  financeState?: any;
   onAddRow: (data: any) => void;
   onEditRow: (id: string, data: any) => void;
   onDeleteRow: (id: string) => void;
@@ -46,7 +47,7 @@ interface TableViewProps {
 const ROW_H = 44; // Increased for better touch targets on mobile
 const VISIBLE = 25;
 
-export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onAddRow, onEditRow, onDeleteRow, onRateChange }) => {
+export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, financeState, onAddRow, onEditRow, onDeleteRow, onRateChange }) => {
   const [form, setForm] = useState({});
   const [editId, setEditId] = useState<string | null>(null);
   const [delId, setDelId] = useState<string | null>(null);
@@ -68,7 +69,8 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const { state } = useFinanceStore();
+  const { state: fallbackState } = useFinanceStore();
+  const state = financeState || fallbackState;
 
   const { 
     merges, 
@@ -383,6 +385,10 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     String(Number((table as any).hourly_rate) || '')
   );
   const hourlyRate = Number(rateInput) || 0;
+
+  useEffect(() => {
+    setRateInput(String(Number((table as any).hourly_rate) || ''));
+  }, [table.id, (table as any).hourly_rate]);
 
   // Compute the auto value for a Total Hours / Estimated Pay field from the
   // current form's Start/End Time fields.
@@ -804,6 +810,7 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
           fieldName={showFormulaBuilder.field.name}
           initialFormula={showFormulaBuilder.currentFormula}
           merges={merges}
+          financeState={state}
           onSave={handleFormulaSave}
           onClose={() => setShowFormulaBuilder(null)}
         />

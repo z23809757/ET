@@ -93,6 +93,8 @@ export const financeService = {
           type: table.type,
           is_reference: table.is_reference || false,
           is_global: table.is_global || false,
+          include_in_overall: table.include_in_overall || false,
+          hourly_rate: table.hourly_rate,
           fields: (table.fields || []).map((field: any) => ({
             id: field.id,
             name: field.name,
@@ -131,6 +133,7 @@ async fetchGlobalTables(): Promise<Table[]> {
     is_reference: true,
     is_global: true,
     include_in_overall: table.include_in_overall || false,
+    hourly_rate: table.hourly_rate,
     tab_id: null,
     fields: (table.fields || []).map((field: any) => ({
       id: field.id,
