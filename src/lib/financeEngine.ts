@@ -135,9 +135,17 @@ dashboardMetrics(rows: OverallRow[], dispCur: string, rate: number): DashboardMe
     const amtUSD = (typeof r.amtUSD === 'number' && !isNaN(r.amtUSD)) ? r.amtUSD : 0;
     const amtINR = (typeof r.amtINR === 'number' && !isNaN(r.amtINR)) ? r.amtINR : 0;
     
-    if (r.type === "Income") income += amtUSD;
-    else if (r.type === "Expense") expense += amtUSD;
-    else if (r.type === "Loan") loanINR += amtINR;
+    const normalizedType = String(r.type || '').trim().toLowerCase();
+
+if (normalizedType === "income") {
+  income += amtUSD;
+}
+else if (normalizedType === "expense") {
+  expense += amtUSD;
+}
+else if (normalizedType === "loan") {
+  loanINR += amtINR;
+}
   }
   
   // Ensure rate is valid

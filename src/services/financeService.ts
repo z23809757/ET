@@ -116,6 +116,7 @@ async fetchGlobalTables(): Promise<Table[]> {
       fields: fields (*)
     `)
     .eq('is_global', true)
+    .eq('user_id', userData.user.id)
     .is('tab_id', null);
   
   if (error) {
@@ -129,6 +130,7 @@ async fetchGlobalTables(): Promise<Table[]> {
     type: table.type,
     is_reference: true,
     is_global: true,
+    include_in_overall: table.include_in_overall || false,
     tab_id: null,
     fields: (table.fields || []).map((field: any) => ({
       id: field.id,
