@@ -271,7 +271,7 @@ export const AppShell: React.FC = () => {
           </div>
 
           {/* Scrollable Content - Responsive padding */}
-          <div className="flex-1 overflow-auto">
+          <div className={`flex-1 ${activeView === 'table' ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
             {activeView === 'dashboard' && (
               <DashboardView
                 overallRows={overallRowsData}

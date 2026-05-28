@@ -139,7 +139,7 @@ export const AnimeBackground: React.FC<AnimeBackgroundProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative h-screen overflow-hidden">
       {/* Main Background */}
       <div 
         className="absolute inset-0"
