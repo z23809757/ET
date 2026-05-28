@@ -1,7 +1,21 @@
-import { CellReference, FormulaValidationResult } from '../../types/formula';
-import { ParsedFormula, EvaluationContext } from './FormulaTypes';
-import { FORMULA_FUNCTIONS } from './FormulaTypes';
-import { CellReferenceParser } from './CellReference';
+import type { CellReference, FormulaValidationResult } from '../../types/formula';
+import type { ParsedFormula, EvaluationContext } from './FormulaTypes';
+
+const parseCellReference = (referenceString: string): CellReference | null => {
+  const match = referenceString.match(/^([^!]+)!([^_]+)_(.+)$/);
+  if (!match) return null;
+  
+  const [, tableName, fieldName, rowId] = match;
+  
+  return {
+    tableId: '',
+    tableName,
+    fieldId: '',
+    fieldName,
+    rowId,
+    isRange: false
+  };
+};
 
 export class FormulaParser {
   static parse(formula: string, getReferenceValue?: (ref: CellReference) => any): ParsedFormula {
@@ -13,7 +27,7 @@ export class FormulaParser {
     let match;
     
     while ((match = referencePattern.exec(expression)) !== null) {
-      const ref = CellReferenceParser.parse(match[1]);
+      const ref = parseCellReference(match[1]);
       if (ref) {
         dependencies.push(ref);
       }
@@ -38,7 +52,7 @@ export class FormulaParser {
       let match;
       
       while ((match = referencePattern.exec(expression)) !== null) {
-        const ref = CellReferenceParser.parse(match[1]);
+          const ref = parseCellReference(match[1]);
         if (ref) {
           const value = await context.getCellValue(ref);
           expression = expression.replace(match[1], String(value || 0));

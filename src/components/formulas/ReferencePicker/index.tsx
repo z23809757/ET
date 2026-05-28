@@ -17,7 +17,7 @@ interface ReferencePickerProps {
 }
 
 export const ReferencePicker: React.FC<ReferencePickerProps> = ({ references = [], onSelect, tableId, merges, onCancel }) => {
-  const [showPicker, setShowPicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(true);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [selectionType, setSelectionType] = useState<'row' | 'range' | null>(null);
@@ -87,6 +87,11 @@ export const ReferencePicker: React.FC<ReferencePickerProps> = ({ references = [
   };
   
   const handleSelectionTypeChoice = (type: 'row' | 'range') => {
+    if (type === 'range' && rangeOption) {
+      onSelect(rangeOption);
+      closePicker();
+      return;
+    }
     setSelectionType(type);
   };
   

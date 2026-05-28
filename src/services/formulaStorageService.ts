@@ -1,28 +1,19 @@
 import { supabase } from '../lib/supabase';
-import { Formula } from '../types/formula';
-import { normalizeFormula, denormalizeFormula, getCellInternalId } from '../lib/formulaNormalizer';
 
 export const formulaStorageService = {
   async saveFormula(
     tableId: string,
     rowId: string,
     fieldId: string,
-    displayFormula: string,
-    getReferenceInfo: any,
-    getReferenceDisplay: any
+    formula: string
   ): Promise<void> {
-    // Normalize the formula to internal representation
-    const { internalFormula, dependsOn } = normalizeFormula(displayFormula, getReferenceInfo);
-    
     const { error } = await supabase
       .from('row_formulas')
       .upsert({
         table_id: tableId,
         row_id: rowId,
         field_id: fieldId,
-        formula_display: displayFormula,
-        formula_internal: internalFormula,
-        depends_on: dependsOn,
+        formula,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'table_id,row_id,field_id'
@@ -34,10 +25,10 @@ export const formulaStorageService = {
     }
   },
 
-  async getFormulasForTable(tableId: string): Promise<Record<string, Record<string, { display: string; internal: string }>>> {
+  async getFormulasForTable(tableId: string): Promise<Record<string, Record<string, string>>> {
     const { data, error } = await supabase
       .from('row_formulas')
-      .select('row_id, field_id, formula_display, formula_internal')
+      .select('row_id, field_id, formula')
       .eq('table_id', tableId);
     
     if (error) {
@@ -45,26 +36,21 @@ export const formulaStorageService = {
       return {};
     }
     
-    const result: Record<string, Record<string, { display: string; internal: string }>> = {};
+    const result: Record<string, Record<string, string>> = {};
     for (const item of data || []) {
       if (!result[item.row_id]) {
         result[item.row_id] = {};
       }
-      result[item.row_id][item.field_id] = {
-        display: item.formula_display,
-        internal: item.formula_internal
-      };
+      result[item.row_id][item.field_id] = item.formula;
     }
     
     return result;
   },
 
-  async updateFormulaDisplay(formulaId: string, newDisplayFormula: string): Promise<void> {
-    // When table/field names change, we only need to update the display formula
-    // The internal formula remains the same since it uses IDs
+  async updateFormulaDisplay(formulaId: string, formula: string): Promise<void> {
     const { error } = await supabase
       .from('row_formulas')
-      .update({ formula_display: newDisplayFormula })
+      .update({ formula })
       .eq('id', formulaId);
     
     if (error) throw error;

@@ -27,7 +27,8 @@ interface FormulaBuilderModalProps {
   fieldName?: string;
   initialFormula?: string;
   merges?: MergedCell[];
-  onSave: (formula: string) => void;
+  financeState?: any;
+  onSave: (formula: string) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -36,6 +37,7 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
   fieldName,
   initialFormula = '',
   merges = [],
+  financeState,
   onSave,
   onClose
 }) => {
@@ -46,8 +48,9 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
   const [showReferencePicker, setShowReferencePicker] = useState(false);
   const [showFunctions, setShowFunctions] = useState(false);
   
-  const { state } = useFinanceStore();
-  const { availableReferences=[], getReferenceString } = useCellReferences();
+  const { state: fallbackState } = useFinanceStore();
+  const state = financeState || fallbackState;
+  const { availableReferences=[], getReferenceString } = useCellReferences(state);
 
   // Resolve a merged cell value for preview — handles nested ROW_/MERGE_ formulas
   const resolveMergedValue = useCallback((merge: MergedCell): number => {
@@ -86,6 +89,13 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
               return isNaN(val) ? '0' : String(val);
             }
           }
+        }
+        for (const table of state.globalTables || []) {
+          const rows = state.rowsByTable[table.id] || [];
+          const row = rows.find((r: any) => r.id === rowId);
+          if (!row) continue;
+          const val = parseFloat(row[fieldId]);
+          return isNaN(val) ? '0' : String(val);
         }
         return '0';
       }
@@ -140,6 +150,14 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
               }
             }
           }
+          for (const table of state.globalTables || []) {
+            const rows = state.rowsByTable[table.id] || [];
+            const row = rows.find((r: any) => r.id === rowId);
+            if (!row) continue;
+            const val = row[fieldId];
+            const num = parseFloat(val);
+            return isNaN(num) ? '0' : String(num);
+          }
           return '0';
         }
       );
@@ -164,6 +182,27 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
   }, [merges, state, resolveMergedValue]);
 
   const handleAddReference = useCallback(async (reference: CellReference) => {
+    let newFormula = formula;
+
+    if (reference.isRange) {
+      const rowReferences = (availableReferences || []).filter(ref =>
+        ref.tableId === reference.tableId &&
+        ref.fieldId === reference.fieldId &&
+        !ref.isRange &&
+        ref.rowId
+      );
+
+      const expression = rowReferences.length > 0
+        ? rowReferences.map(ref => `ROW_${ref.rowId}_${ref.fieldId}`).join('+')
+        : '0';
+
+      newFormula = formula + `(${expression})`;
+      setFormula(newFormula);
+      await updatePreview(newFormula);
+      setShowReferencePicker(false);
+      return;
+    }
+
     // Check if this is a merged cell
     const merge = merges.find(m =>
       m.table_id === reference.tableId &&
@@ -171,7 +210,6 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
       m.start_col_id === reference.fieldId
     );
 
-    let newFormula = formula;
     if (merge) {
       // Merged cell reference
       newFormula = formula + `MERGE_${merge.id}`;
@@ -183,7 +221,7 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
     setFormula(newFormula);
     await updatePreview(newFormula);
     setShowReferencePicker(false);
-  }, [formula, merges, updatePreview]);
+  }, [formula, merges, updatePreview, availableReferences]);
 
   const handleAddNumber = useCallback((num: string) => {
     const newFormula = formula + num;
@@ -215,8 +253,12 @@ export const FormulaBuilderModal: React.FC<FormulaBuilderModalProps> = ({
       setError('Please enter a formula');
       return;
     }
-    onSave(formula);
-    onClose();
+    try {
+      await onSave(formula);
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to save formula');
+    }
   };
 
   const formattedPreview = previewValue !== null && typeof previewValue === 'number' 

@@ -58,6 +58,13 @@ export function useFormulaEvaluation(merges: MergedCell[] = [], state?: any) {
               }
             }
           }
+          for (const table of state.globalTables || []) {
+            const rows = state.rowsByTable[table.id] || [];
+            const row = rows.find((r: any) => r.id === rowId);
+            if (!row) continue;
+            const val = parseFloat(row[fieldId]);
+            return isNaN(val) ? '0' : String(val);
+          }
           return '0';
         }
       );
@@ -81,7 +88,7 @@ export function useFormulaEvaluation(merges: MergedCell[] = [], state?: any) {
     
     const yearMatch = tablePart.match(/\((\d+)\)/);
     const year = yearMatch ? parseInt(yearMatch[1]) : null;
-    const cleanTableName = tablePart.replace(/\s*\(\d+\)/, '').trim();
+    const cleanTableName = tablePart.replace(/\s*\((\d+|Global)\)/, '').trim();
     
     for (const yearData of state.years) {
       if (year && yearData.year !== year) continue;
@@ -105,6 +112,26 @@ export function useFormulaEvaluation(merges: MergedCell[] = [], state?: any) {
           const val = parseFloat(row[field.id]);
           return isNaN(val) ? '0' : String(val);
         }
+      }
+    }
+    if (!year) {
+      for (const table of state.globalTables || []) {
+        if (table.name !== cleanTableName) continue;
+        const rows = state.rowsByTable[table.id] || [];
+        const row = rows.find((r: any) => r.id === rowId);
+        if (!row) continue;
+        const field = table.fields.find((f: any) => f.name === fieldName);
+        if (!field) continue;
+        const merge = merges.find(m =>
+          m.table_id === table.id &&
+          m.start_row_id === rowId &&
+          m.start_col_id === field.id
+        );
+        if (merge) {
+          return String(resolveMergeValue(merge));
+        }
+        const val = parseFloat(row[field.id]);
+        return isNaN(val) ? '0' : String(val);
       }
     }
     return '0';
@@ -170,6 +197,26 @@ export function useFormulaEvaluation(merges: MergedCell[] = [], state?: any) {
                   return isNaN(val) ? '0' : String(val);
                 }
               }
+            }
+            for (const table of state.globalTables || []) {
+              const rows = state.rowsByTable[table.id] || [];
+              const row = rows.find((r: any) => r.id === rowId);
+              if (!row) continue;
+
+              const field = table.fields.find((f: any) => f.id === fieldId);
+              if (!field) continue;
+
+              const merge = merges.find(m =>
+                m.table_id === table.id &&
+                m.start_row_id === rowId &&
+                m.start_col_id === fieldId
+              );
+              if (merge) {
+                return String(resolveMergeValue(merge));
+              }
+
+              const val = parseFloat(row[fieldId]);
+              return isNaN(val) ? '0' : String(val);
             }
             return '0';
           }
