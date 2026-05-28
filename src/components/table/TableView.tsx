@@ -398,10 +398,20 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
     return pay.toFixed(2);
   };
 
+  const getEntryFieldWidth = (fieldType: string) => {
+    if (fieldType === 'Date' || fieldType === 'Month' || fieldType === 'Start Time' || fieldType === 'End Time') {
+      return 'w-36';
+    }
+    if (fieldType === 'Formula' || fieldType === 'Total Hours' || fieldType === 'Estimated Pay') {
+      return 'w-40';
+    }
+    return 'w-44';
+  };
+
   const renderInput = (f: any) => {
     if (f.type === 'Formula') {
       return (
-        <div className="flex-1 min-w-[80px]" key={f.id}>
+        <div className="w-full" key={f.id}>
           <div className="px-2 py-1.5 text-xs bg-white/5 rounded-lg text-white/40 text-center flex items-center justify-center gap-1.5">
             <Icon n="ti-calculator" size={12} />
             Auto-calculated
@@ -412,7 +422,7 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
 
     const v = form[f.id] || '';
     const set = (val: any) => setForm((p: any) => ({ ...p, [f.id]: val }));
-    const baseInputClass = "flex-1 px-2 py-2 md:py-1.5 text-xs border border-white/10 rounded-lg bg-white/5 text-white/90 placeholder:text-white/20 focus:outline-none focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/30 transition-all min-w-0";
+    const baseInputClass = "w-full px-2 py-2 md:py-1.5 text-xs border border-white/10 rounded-lg bg-white/5 text-white/90 placeholder:text-white/20 focus:outline-none focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/30 transition-all";
 
     if (f.type === 'Dropdown') {
       return (
@@ -654,8 +664,11 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
           className="flex-1 overflow-auto relative"
         >
           {/* Horizontal scroll wrapper for mobile */}
-          <div className="min-w-[600px] md:min-w-full overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
+          <div className="overflow-x-auto">
+            <table
+              className="w-full border-collapse text-xs"
+              style={{ minWidth: Math.max(720, table.fields.length * 150 + 96) }}
+            >
               <thead className="sticky top-0 z-10 bg-navy-800/95 backdrop-blur-sm">
                 <tr className="border-b border-white/10">
                   {table.fields.map(f => (
@@ -757,25 +770,30 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, onA
         <div className="text-2xs font-semibold text-white/40 uppercase tracking-wider mb-2">
           {editId ? 'EDIT ROW' : 'ADD NEW ROW'}
         </div>
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
-          {table.fields.map(f => (
-            <div key={f.id} className="flex-1 min-w-[100px] sm:min-w-[80px]">
-              {renderInput(f)}
+        <div className="overflow-x-auto pb-1 custom-scroll">
+          <div className="flex items-end gap-2 min-w-max">
+            {table.fields.map(f => (
+              <div key={f.id} className={cn("shrink-0", getEntryFieldWidth(f.type))}>
+                <div className="text-[10px] leading-3 text-white/35 truncate mb-1 px-1" title={f.name}>
+                  {f.name}
+                </div>
+                {renderInput(f)}
+              </div>
+            ))}
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant={editId ? 'green' : 'blue'} onClick={submit} size="sm" className="h-9 px-4">
+                <Icon n={editId ? 'ti-check' : 'ti-plus'} size={12} />
+                {editId ? 'Save' : 'Add'}
+              </Button>
+              {editId && (
+                <button
+                  onClick={cancelEdit}
+                  className="h-9 text-xs text-white/40 hover:text-white/60 transition-colors px-2 touch-manipulation"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
-          ))}
-          <div className="flex items-center gap-2">
-            <Button variant={editId ? 'green' : 'blue'} onClick={submit} size="sm" className="flex-1 sm:flex-none">
-              <Icon n={editId ? 'ti-check' : 'ti-plus'} size={12} />
-              {editId ? 'Save' : 'Add'}
-            </Button>
-            {editId && (
-              <button
-                onClick={cancelEdit}
-                className="text-xs text-white/40 hover:text-white/60 transition-colors px-2 py-2 touch-manipulation"
-              >
-                Cancel
-              </button>
-            )}
           </div>
         </div>
       </div>
