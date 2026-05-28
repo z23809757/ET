@@ -27,7 +27,10 @@ export const OverallView: React.FC<OverallViewProps> = ({
   const monthly = useMemo(() => FE.monthlySummary(overallRows), [overallRows]);
   const category = useMemo(() => FE.categorySummary(overallRows), [overallRows]);
   const yearly = useMemo(() => FE.yearlyComparison(allYearsRows), [allYearsRows]);
-  const fmt = (n: number) => settings.displayCurrency === 'INR' ? formatINR(n * settings.exchangeRate) : formatUSD(n);
+  const fmt = (n: number) =>
+  settings.displayCurrency === 'INR'
+    ? formatINR(n)
+    : formatUSD(n);
 
   return (
     <div className="flex-1 overflow-auto p-4">

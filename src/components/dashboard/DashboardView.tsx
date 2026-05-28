@@ -102,21 +102,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const charts = useMemo(() => FE.chartData(filtered), [filtered]);
   const recent = filtered.slice(0, 10);
 
-  const fmt = (n: number) => {
-    let safeValue = 0;
-    if (typeof n === 'number' && !isNaN(n)) {
-      safeValue = n;
-    } else if (typeof n === 'string') {
-      safeValue = parseFloat(n) || 0;
-    }
-    
-    const safeRate = (settings.exchangeRate && !isNaN(settings.exchangeRate)) ? settings.exchangeRate : 85.4;
-    
-    if (settings.displayCurrency === 'INR') {
-      return formatINR(safeValue * safeRate);
-    }
-    return formatUSD(safeValue);
-  };
+const fmt = (n: number) => {
+  let safeValue = 0;
+
+  if (typeof n === 'number' && !isNaN(n)) {
+    safeValue = n;
+  } else if (typeof n === 'string') {
+    safeValue = parseFloat(n) || 0;
+  }
+
+  if (settings.displayCurrency === 'INR') {
+    return formatINR(safeValue);
+  }
+
+  return formatUSD(safeValue);
+};
 
   const handleClearFilters = () => {
     onFilterChange({ from: '', to: '', quick: 'all' });

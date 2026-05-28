@@ -28,7 +28,10 @@ export const AllYearsOverview: React.FC<AllYearsOverviewProps> = ({ allYearsRows
   const category = useMemo(() => FE.categorySummary(allRows), [allRows]);
   const yearly = useMemo(() => FE.yearlyComparison(allYearsRows), [allYearsRows]);
   
-  const fmt = (n: number) => settings.displayCurrency === 'INR' ? formatINR(n * settings.exchangeRate) : formatUSD(n);
+  const fmt = (n: number) =>
+  settings.displayCurrency === 'INR'
+    ? formatINR(n)
+    : formatUSD(n);
 
   const yearCount = Object.keys(allYearsRows).length;
 
