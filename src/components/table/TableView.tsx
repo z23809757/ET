@@ -99,6 +99,40 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
 
   const [selectionStart, setSelectionStart] = useState<{ rowId: string; colId: string } | null>(null);
 
+  // FIX 1: Helper function to detect hidden merged cells
+  const isHiddenMergedCell = useCallback((rowId: string, colId: string): boolean => {
+    const merge = merges.find(m => 
+      m.start_row_id === rowId || 
+      m.end_row_id === rowId || 
+      (rowId > m.start_row_id && rowId < m.end_row_id)
+    );
+    
+    if (!merge) return false;
+    
+    const rowIds = rows.map(r => r.id);
+    const fieldIds = table.fields.map(f => f.id);
+    
+    const startRowIdx = rowIds.indexOf(merge.start_row_id);
+    const endRowIdx = rowIds.indexOf(merge.end_row_id);
+    const currentRowIdx = rowIds.indexOf(rowId);
+    
+    const startColIdx = fieldIds.indexOf(merge.start_col_id);
+    const endColIdx = fieldIds.indexOf(merge.end_col_id);
+    const currentColIdx = fieldIds.indexOf(colId);
+    
+    const isInsideMergedArea = 
+      currentRowIdx >= startRowIdx && 
+      currentRowIdx <= endRowIdx &&
+      currentColIdx >= startColIdx && 
+      currentColIdx <= endColIdx;
+      
+    const isMasterCell = 
+      rowId === merge.start_row_id && 
+      colId === merge.start_col_id;
+      
+    return isInsideMergedArea && !isMasterCell;
+  }, [merges, rows, table.fields]);
+
   useEffect(() => {
     const loadFormulas = async () => {
       setIsLoadingFormulas(true);
@@ -333,26 +367,63 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
     }
   };
 
+  // FIX 2 & 3: Updated handleApplyMerge with single-cell prevention
   const handleApplyMerge = async () => {
     if (!selectedRange) return;
 
+    // Normalize selection direction
+    const rowIds = rows.map(r => r.id);
+    const fieldIds = table.fields.map(f => f.id);
+
+    const startRowIndex = rowIds.indexOf(selectedRange.startRowId);
+    const endRowIndex = rowIds.indexOf(selectedRange.endRowId);
+    const startColIndex = fieldIds.indexOf(selectedRange.startColId);
+    const endColIndex = fieldIds.indexOf(selectedRange.endColId);
+
+    const normalizedStartRowId = rowIds[Math.min(startRowIndex, endRowIndex)];
+    const normalizedEndRowId = rowIds[Math.max(startRowIndex, endRowIndex)];
+    const normalizedStartColId = fieldIds[Math.min(startColIndex, endColIndex)];
+    const normalizedEndColId = fieldIds[Math.max(startColIndex, endColIndex)];
+
+    // PREVENT SINGLE-CELL MERGE
+    const isSingleCell = 
+      normalizedStartRowId === normalizedEndRowId &&
+      normalizedStartColId === normalizedEndColId;
+    
+    if (isSingleCell) {
+      console.warn('Cannot merge a single cell');
+      setSelectionMode('none');
+      setSelectedRange(null);
+      setSelectionStart(null);
+      return;
+    }
+
     if (selectionMode === 'merge') {
-      const firstRow = rows.find(r => r.id === selectedRange.startRowId);
-      const firstField = table.fields.find(f => f.id === selectedRange.startColId);
-      const mergedValue = firstRow?.[firstField?.id || ''] || '';
+      // Always use top-left cell value
+      const firstRow = rows.find(
+        r => r.id === normalizedStartRowId
+      );
+
+      const firstField = table.fields.find(
+        f => f.id === normalizedStartColId
+      );
+
+      const mergedValue =
+        firstRow?.[firstField?.id || ''] || '';
 
       await mergeCells(
-        selectedRange.startRowId,
-        selectedRange.endRowId,
-        selectedRange.startColId,
-        selectedRange.endColId,
+        normalizedStartRowId,
+        normalizedEndRowId,
+        normalizedStartColId,
+        normalizedEndColId,
         String(mergedValue)
       );
     } else if (selectionMode === 'unmerge') {
       const mergeToRemove = merges.find(m =>
-        m.start_row_id === selectedRange.startRowId &&
-        m.start_col_id === selectedRange.startColId
+        m.start_row_id === normalizedStartRowId &&
+        m.start_col_id === normalizedStartColId
       );
+
       if (mergeToRemove) {
         await unmergeCells(mergeToRemove.id);
       }
@@ -369,20 +440,22 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
     setSelectionStart(null);
   };
 
+  // FIX 4: Updated rowSpan/colSpan calculation with absolute values
   const getRowSpan = (mergedCell: any, allRows: Row[]) => {
     const startIndex = allRows.findIndex(r => r.id === mergedCell.start_row_id);
     const endIndex = allRows.findIndex(r => r.id === mergedCell.end_row_id);
     if (startIndex === -1 || endIndex === -1) return 1;
-    return endIndex - startIndex + 1;
+    return Math.abs(endIndex - startIndex) + 1;
   };
 
   const getColSpan = (mergedCell: any, fields: any[]) => {
     const startIndex = fields.findIndex(f => f.id === mergedCell.start_col_id);
     const endIndex = fields.findIndex(f => f.id === mergedCell.end_col_id);
     if (startIndex === -1 || endIndex === -1) return 1;
-    return endIndex - startIndex + 1;
+    return Math.abs(endIndex - startIndex) + 1;
   };
 
+  // FIX 5: Improved selection highlighting with proper bounds checking
   const isCellSelected = (rowId: string, colId: string) => {
     if (!selectedRange) return false;
 
@@ -522,7 +595,8 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
   };
 
   const fmtCell = (row: Row, f: any): React.ReactNode | null => {
-    const hidden = isCellHidden(row.id, f.id, rows, table.fields);
+    // FIX 1: Use improved hidden cell detection
+    const hidden = isCellHidden(row.id, f.id, rows, table.fields) || isHiddenMergedCell(row.id, f.id);
     if (hidden) return null;
 
     const mergedCell = isCellMerged(row.id, f.id);
@@ -758,9 +832,11 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
                         if (cellContent === null) return null;
                         
                         const mergedCell = isCellMerged(row.id, f.id);
+                        // FIX 5: Improved selection highlighting
                         const isSelected = isCellSelected(row.id, f.id);
                         const isInMergeMode = selectionMode !== 'none';
                         
+                        // FIX 4: Use updated rowSpan/colSpan calculation
                         const rowSpan = mergedCell ? getRowSpan(mergedCell, rows) : 1;
                         const colSpan = mergedCell ? getColSpan(mergedCell, table.fields) : 1;
 
@@ -773,7 +849,9 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
                             className={cn(
                               "px-2 py-2 md:py-1.5 text-white/80 transition-all align-middle",
                               isInMergeMode && "cursor-crosshair",
-                              isInMergeMode && isSelected && "bg-accent-cyan/10 border border-accent-cyan/50"
+                              isInMergeMode && isSelected && "bg-accent-cyan/10 border border-accent-cyan/50",
+                              // FIX 5: Better visual feedback for selected cells in non-merge mode
+                              !isInMergeMode && isSelected && "bg-accent-cyan/5"
                             )}
                           >
                             {cellContent}
@@ -805,15 +883,15 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
                             <Icon n="ti-trash" size={isMobile ? 18 : 14} color="#F43F5E" className="cursor-pointer hover:scale-110 transition-transform touch-manipulation" onClick={() => setDelId(row.id)} />
                           </div>
                         )}
-                      </td>
-                    </tr>
+                       </td>
+                     </tr>
                   );
                 })}
 
                 {endIdx < total && (
                   <tr style={{ height: (total - endIdx) * ROW_H }}>
                     <td colSpan={table.fields.length + 1} />
-                  </tr>
+                   </tr>
                 )}
               </tbody>
             </table>
