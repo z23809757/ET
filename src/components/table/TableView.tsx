@@ -796,10 +796,19 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
           {/* Horizontal scroll wrapper for mobile */}
           <div className="overflow-x-auto">
             <table
-              className="w-full border-collapse text-xs"
+              className="
+w-full border-collapse text-xs
+border border-white/10
+rounded-xl overflow-hidden
+"
               style={{ minWidth: Math.max(720, table.fields.length * 150 + 96) }}
             >
-              <thead className="sticky top-0 z-10 bg-navy-800/95 backdrop-blur-sm">
+              <thead className="
+sticky top-0 z-10
+bg-navy-800/95
+backdrop-blur-sm
+shadow-[0_2px_8px_rgba(0,0,0,0.35)]
+">
                 <tr className="border-b border-white/10">
                   {table.fields.map(f => (
                     <th key={f.id} className="px-2 py-2.5 text-left text-2xs font-semibold text-white/50 uppercase tracking-wider whitespace-nowrap">
@@ -807,7 +816,14 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
                       {f.type === 'Formula' && <span className="ml-1 text-[9px] text-accent-emerald">🔢</span>}
                     </th>
                   ))}
-                  <th className="px-2 py-2.5 text-left text-2xs font-semibold text-white/50 uppercase tracking-wider w-20 whitespace-nowrap">Actions</th>
+                  <th className="
+px-2 py-2.5
+text-left text-2xs font-semibold
+text-white/50 uppercase tracking-wider
+whitespace-nowrap
+border-r border-b border-white/10
+bg-white/[0.03]
+">Actions</th>
                 </tr>
               </thead>
 
@@ -824,7 +840,14 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
                   return (
                     <tr 
                       key={row.id}
-                      className="border-b border-white/5 hover:bg-white/5 transition-all duration-150 group"
+                      className={cn(
+  "transition-all duration-150 group",
+  "border-b border-white/10",
+  "hover:bg-white/[0.04]",
+  rows.indexOf(row) % 2 === 0
+    ? "bg-white/[0.015]"
+    : "bg-transparent"
+)}
                       style={{ height: ROW_H }}
                     >
                       {table.fields.map((f) => {
@@ -847,12 +870,13 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
                             rowSpan={rowSpan}
                             colSpan={colSpan}
                             className={cn(
-                              "px-2 py-2 md:py-1.5 text-white/80 transition-all align-middle",
-                              isInMergeMode && "cursor-crosshair",
-                              isInMergeMode && isSelected && "bg-accent-cyan/10 border border-accent-cyan/50",
-                              // FIX 5: Better visual feedback for selected cells in non-merge mode
-                              !isInMergeMode && isSelected && "bg-accent-cyan/5"
-                            )}
+  "px-2 py-2 md:py-1.5 text-white/80 transition-all align-middle",
+  "border-r border-b border-white/10",
+  "hover:bg-white/[0.03]",
+  isInMergeMode && "cursor-crosshair",
+  isInMergeMode && isSelected && "bg-accent-cyan/10 border border-accent-cyan/50",
+  mergedCell && "bg-accent-cyan/[0.06] border border-accent-cyan/30"
+)}
                           >
                             {cellContent}
                           </td>
