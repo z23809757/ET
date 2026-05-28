@@ -357,8 +357,16 @@ export function useFinanceStore() {
     }
   }, []);
 
-  const updateTable = useCallback(async (tabId: string, tableId: string, name: string, type: string, fields: any[]) => {
-    await financeService.updateTable(tableId, { name, type });
+  const updateTable = useCallback(async (tabId: string | null, tableId: string, name: string, type: string, fields: any[], options: any = {}) => {
+    const updates: any = { name, type };
+    if (options.is_global) {
+      updates.is_reference = true;
+      updates.is_global = true;
+      updates.include_in_overall = !!options.include_in_overall;
+      updates.type = options.include_in_overall ? type : 'None';
+    }
+
+    await financeService.updateTable(tableId, updates);
     await financeService.saveFields(tableId, fields);
     
     const yearId = state.years.find(y => 
@@ -368,6 +376,11 @@ export function useFinanceStore() {
     if (yearId) {
       const tabs = await financeService.fetchFullYearData(yearId);
       dispatch({ type: 'SET_TABS', yearId, tabs });
+    }
+
+    if (options.is_global) {
+      const updatedGlobalTables = await financeService.fetchGlobalTables();
+      dispatch({ type: 'SET_GLOBAL_TABLES', payload: updatedGlobalTables });
     }
     
     toast.success(`Table "${name}" updated`);

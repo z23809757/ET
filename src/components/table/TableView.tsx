@@ -33,6 +33,15 @@ const to12h = (hhmm: string): string => {
   return `${h}:${m.toString().padStart(2, '0')} ${ap}`;
 };
 
+const dayFromDate = (dateValue: string): string => {
+  if (!dateValue) return '';
+  const [year, month, day] = dateValue.split('-').map(Number);
+  if (!year || !month || !day) return '';
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-US', { weekday: 'long' });
+};
+
 interface TableViewProps {
   table: Table;
   rows: Row[];
@@ -260,9 +269,27 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
     setForm({});
   };
 
+  const withAutoDayValues = (formData: Record<string, any>) => {
+    const next = { ...formData };
+    const dateField = table.fields.find((f: any) => f.type === 'Date');
+    const dateValue = dateField ? next[dateField.id] : '';
+    const autoDay = dayFromDate(dateValue);
+
+    if (autoDay) {
+      table.fields
+        .filter((f: any) => f.type === 'Day')
+        .forEach((field: any) => {
+          next[field.id] = autoDay;
+        });
+    }
+
+    return next;
+  };
+
   const submit = () => {
+    const submitForm = withAutoDayValues(form);
     if (editId) {
-      const updatePromises = Object.entries(form).map(async ([fieldId, value]) => {
+      const updatePromises = Object.entries(submitForm).map(async ([fieldId, value]) => {
         const merge = isCellMerged(editId, fieldId);
         if (merge) {
           const stringValue = String(value);
@@ -271,11 +298,11 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
       });
       
       Promise.all(updatePromises).then(() => {
-        onEditRow(editId, form);
+        onEditRow(editId, submitForm);
         evaluateAllFormulas();
       });
     } else {
-      onAddRow(form);
+      onAddRow(submitForm);
     }
     setForm({});
     setEditId(null);
@@ -405,7 +432,7 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
   };
 
   const getEntryFieldWidth = (fieldType: string) => {
-    if (fieldType === 'Date' || fieldType === 'Month' || fieldType === 'Start Time' || fieldType === 'End Time') {
+    if (fieldType === 'Date' || fieldType === 'Day' || fieldType === 'Month' || fieldType === 'Start Time' || fieldType === 'End Time') {
       return 'w-36';
     }
     if (fieldType === 'Formula' || fieldType === 'Total Hours' || fieldType === 'Estimated Pay') {
@@ -441,6 +468,22 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
       );
     }
     if (f.type === 'Date') return <input key={f.id} type="date" value={v} onChange={(e: any) => set(e.target.value)} className={baseInputClass} />;
+    if (f.type === 'Day') {
+      const dateField = table.fields.find((x: any) => x.type === 'Date');
+      const autoDay = dateField ? dayFromDate(form[dateField.id]) : '';
+      return (
+        <input
+          key={f.id}
+          type="text"
+          value={autoDay || v}
+          onChange={(e: any) => set(e.target.value)}
+          placeholder={autoDay ? 'Auto-filled' : f.name}
+          readOnly={!!autoDay}
+          className={cn(baseInputClass, autoDay && "text-white/60 italic")}
+          title={autoDay ? 'Auto-filled from Date' : 'No date selected; you can fill this manually'}
+        />
+      );
+    }
     if (f.type === 'Month') return <input key={f.id} type="month" value={v} onChange={(e: any) => set(e.target.value)} className={baseInputClass} />;
     if (f.type === 'Number') return <input key={f.id} type="number" value={v} onChange={(e: any) => set(e.target.value)} placeholder={f.name} className={cn(baseInputClass, "text-right")} />;
 
@@ -564,6 +607,13 @@ export const TableView: React.FC<TableViewProps> = ({ table, rows, settings, fin
     }
 
     const v = row[f.id];
+
+    if (f.type === 'Day') {
+      if (v) return <span className="text-xs md:text-sm">{v}</span>;
+      const dateField = table.fields.find((x: any) => x.type === 'Date');
+      const autoDay = dateField ? dayFromDate(row[dateField.id]) : '';
+      return <span className={cn("text-xs md:text-sm", !autoDay && "text-white/30")}>{autoDay || ''}</span>;
+    }
 
     // Time fields: show the stored "h:mm AM/PM" as-is.
     if (f.type === 'Start Time' || f.type === 'End Time') {

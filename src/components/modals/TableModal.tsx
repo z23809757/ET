@@ -195,8 +195,7 @@ export const TableModal: React.FC<TableModalProps> = ({ initial, hasRows = false
                     <select
                       value={f.type}
                       onChange={e => updateField(i, 'type', e.target.value as any)}
-                      disabled={hasRows}
-                      className="w-full px-2 py-1.5 text-xs rounded-lg bg-white/10 border border-white/10 text-white/90 focus:outline-none focus:border-accent-cyan/50 disabled:opacity-50"
+                      className="w-full px-2 py-1.5 text-xs rounded-lg bg-white/10 border border-white/10 text-white/90 focus:outline-none focus:border-accent-cyan/50"
                     >
                       {FIELD_TYPES.map(t => <option key={t}>{t}</option>)}
                     </select>

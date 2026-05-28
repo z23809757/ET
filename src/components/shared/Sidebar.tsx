@@ -7,6 +7,7 @@ import {
   Folder, 
   FolderPlus, 
   Database, 
+  Pencil,
   Trash2, 
   LogOut, 
   ChevronLeft, 
@@ -37,6 +38,7 @@ interface SidebarProps {
   onAddYear: () => void;
   onAddTab: (yearId: string) => void;
   onAddGlobalTable: () => void;
+  onEditGlobalTable: (table: Table) => void;
   onDeleteTab: (tabId: string, name: string, count: number) => void;
   onDeleteTable: (tabId: string, tableId: string, name: string, count: number) => void;
   onClose: () => void;
@@ -91,6 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onAddYear,
   onAddTab,
   onAddGlobalTable,
+  onEditGlobalTable,
   onDeleteTab,
   onDeleteTable,
   onClose,
@@ -300,6 +303,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           badge="Global"
           className="flex-1"
         />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditGlobalTable(table);
+          }}
+          className="opacity-0 group-hover:opacity-100 p-2 md:p-1 rounded text-white/30 hover:text-accent-cyan transition-all touch-manipulation"
+          title="Edit global table"
+        >
+          <Pencil size={isMobile ? 16 : 14} />
+        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();

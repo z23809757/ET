@@ -6,7 +6,7 @@ export interface UserSettings {
 export interface Field {
   id: string;
   name: string;
-  type: 'Text' | 'Number' | 'Date' | 'Month' | 'Dropdown' | 'Formula' | 'Start Time' | 'End Time' | 'Total Hours' | 'Estimated Pay';
+  type: 'Text' | 'Number' | 'Date' | 'Day' | 'Month' | 'Dropdown' | 'Formula' | 'Start Time' | 'End Time' | 'Total Hours' | 'Estimated Pay';
   currency?: 'USD' | 'INR' | 'None';
   isPrimary?: boolean;
   dropdownOptions?: Array<{ id: string; label: string }>;

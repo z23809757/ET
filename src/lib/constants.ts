@@ -6,7 +6,7 @@ export const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
-export const FIELD_TYPES = ['Text', 'Number', 'Date', 'Month', 'Dropdown', 'Formula', 'Start Time', 'End Time', 'Total Hours', 'Estimated Pay'];
+export const FIELD_TYPES = ['Text', 'Number', 'Date', 'Day', 'Month', 'Dropdown', 'Formula', 'Start Time', 'End Time', 'Total Hours', 'Estimated Pay'];
 
 // ─── Table Type Styles ─────────────────────────────────────────────────────
 export const TYPE_C: Record<string, { bg: string; text: string; border: string }> = {

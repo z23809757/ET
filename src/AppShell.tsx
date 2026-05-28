@@ -200,6 +200,7 @@ export const AppShell: React.FC = () => {
               onAddYear={() => dispatch({ type: 'SET_MODAL', modal: { kind: 'addYear' } })}
               onAddTab={(yearId) => dispatch({ type: 'SET_MODAL', modal: { kind: 'addTab', yearId } })}
               onAddGlobalTable={() => setShowGlobalTableModal(true)}
+              onEditGlobalTable={(table) => dispatch({ type: 'SET_MODAL', modal: { kind: 'editTable', table } })}
               onDeleteTab={(tabId, name, count) => dispatch({ type: 'SET_DELETE_TARGET', target: { type: 'tab', tabId, name, count } })}
               onDeleteTable={(tabId, tableId, name, count) => dispatch({ type: 'SET_DELETE_TARGET', target: { type: 'table', tabId, tableId, name, count } })}
               onClose={() => setSidebarOpen(false)}
@@ -433,9 +434,10 @@ export const AppShell: React.FC = () => {
         {modal?.kind === 'editTable' && (
           <TableModal
             initial={modal.table}
+            isGlobal={!!modal.table?.is_global}
             hasRows={(rowsByTable[modal.table?.id] || []).length > 0}
             onSave={async (data) => {
-              await updateTable(modal.tabId, modal.table.id, data.name, data.type, data.fields);
+              await updateTable(modal.tabId, modal.table.id, data.name, data.type, data.fields, data);
               dispatch({ type: 'SET_MODAL', modal: null });
             }}
             onClose={() => dispatch({ type: 'SET_MODAL', modal: null })}
